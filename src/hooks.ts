@@ -2,6 +2,7 @@ import {
   applyChanges,
   computeChanges,
   toCleanableItem,
+  undoChanges,
   type Change,
 } from "./modules/itemCleaning";
 import { openCleaningConfirmationDialog } from "./modules/cleaningDialog";
@@ -37,6 +38,16 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
     label: getString("menuitem-clean-items"),
     commandListener: () => {
       cleanSelectedItems();
+    },
+  });
+
+  ztoolkit.Menu.register("item", {
+    tag: "menuitem",
+    id: "zotero-itemmenu-bibtexclean-undo",
+    label: getString("menuitem-undo-last-clean"),
+    isDisabled: () => !addon.data.lastCleanOperation,
+    commandListener: () => {
+      undoLastCleanOperation();
     },
   });
 }
@@ -87,13 +98,34 @@ async function cleanSelectedItems(): Promise<void> {
     if (failed.length > 0) {
       showInfo(getString("message-success-partial"));
     } else {
-      showSuccess(getString("message-success-cleaned"));
+      showUndoableSuccess(
+        getString("message-success-cleaned"),
+        undoLastCleanOperation,
+      );
     }
   }
 }
 
 function cloneChanges(changes: Change[]): Change[] {
   return changes.map((change) => ({ ...change }));
+}
+
+async function undoLastCleanOperation(): Promise<void> {
+  const operation = addon.data.lastCleanOperation;
+  if (!operation) {
+    return;
+  }
+
+  addon.data.lastCleanOperation = undefined;
+
+  const { succeeded, failed } = await undoChanges(operation.changes);
+  if (failed.length > 0) {
+    showErrorDetails(failed);
+  }
+
+  if (succeeded.length > 0) {
+    showSuccess(getString("message-success-undone"));
+  }
 }
 
 function showSuccess(text: string): void {
@@ -131,6 +163,46 @@ function showInfo(text: string): void {
       type: "default",
     })
     .show();
+}
+
+function showUndoableSuccess(text: string, onUndo: () => void): void {
+  const linkId = "bibtex-clean-undo-link";
+  const progressWindow = new ztoolkit.ProgressWindow(
+    addon.data.config.addonName,
+    {
+      closeOnClick: false,
+      closeTime: 8000,
+    },
+  );
+  progressWindow
+    .createLine({
+      text,
+      type: "success",
+    })
+    .addDescription(
+      `<a id="${linkId}" href="#">${getString("message-undo")}</a>`,
+    )
+    .show();
+
+  setTimeout(() => {
+    try {
+      const win = (progressWindow as any).win?._window as Window | undefined;
+      if (!win) {
+        return;
+      }
+      const link = win.document.getElementById(linkId);
+      if (!link) {
+        return;
+      }
+      link.addEventListener("click", (event: Event) => {
+        event.preventDefault();
+        onUndo();
+        progressWindow.close();
+      });
+    } catch {
+      // Ignore errors from accessing the internal progress window DOM.
+    }
+  }, 100);
 }
 
 async function onNotify(

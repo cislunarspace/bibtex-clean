@@ -11,7 +11,10 @@ export type FluentMessageId =
   | 'dialog-summary-clean-items'
   | 'dialog-title-clean-items'
   | 'menuitem-clean-items'
+  | 'menuitem-undo-last-clean'
   | 'message-error-clean-failed'
   | 'message-no-changes'
   | 'message-success-cleaned'
-  | 'message-success-partial';
+  | 'message-success-partial'
+  | 'message-success-undone'
+  | 'message-undo';

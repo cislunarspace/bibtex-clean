@@ -115,6 +115,26 @@ export async function applyChanges(changes: Change[]): Promise<{
   succeeded: Change[];
   failed: { change: Change; error: Error }[];
 }> {
+  return applyChangeValues(changes, (change) => change.newValue);
+}
+
+/**
+ * 撤销一组变更，将字段恢复到清理前的值。
+ */
+export async function undoChanges(changes: Change[]): Promise<{
+  succeeded: Change[];
+  failed: { change: Change; error: Error }[];
+}> {
+  return applyChangeValues(changes, (change) => change.oldValue);
+}
+
+async function applyChangeValues(
+  changes: Change[],
+  valueSelector: (change: Change) => string,
+): Promise<{
+  succeeded: Change[];
+  failed: { change: Change; error: Error }[];
+}> {
   const succeeded: Change[] = [];
   const failed: { change: Change; error: Error }[] = [];
   for (const change of changes) {
@@ -123,10 +143,11 @@ export async function applyChanges(changes: Change[]): Promise<{
       if (!item) {
         throw new Error(`Item ${change.itemKey} not found`);
       }
+      const value = valueSelector(change);
       if (change.field === "author") {
-        applyAuthorChange(item, change.newValue);
+        applyAuthorChange(item, value);
       } else {
-        item.setField(change.field as any, change.newValue);
+        item.setField(change.field as any, value);
       }
       await item.saveTx();
       succeeded.push(change);
@@ -175,13 +196,16 @@ export function applyAuthorChange(item: Zotero.Item, newValue: string): void {
 /**
  * 将 author 字符串解析为 Zotero creator 数组。
  *
+ * 输入可能是清理前的 "Smith, John; Doe, Jane" 或清理后的
+ * "Smith, John and Doe, Jane"，因此按 ";" 或 " and " 拆分。
+ *
  * 已知限制：
- * - 按小写 " and " 拆分，与清理规则输出一致；
  * - 含逗号的机构名（如 "ACME, Inc."）会被拆成 lastName/firstName，
  *   当前仅处理个人作者常见的 "Last, First" 格式。
  */
 export function parseAuthors(value: string): _ZoteroTypes.Item.CreatorJSON[] {
-  return value.split(" and ").map((part) => {
+  const separator = value.includes(";") ? ";" : " and ";
+  return value.split(separator).map((part) => {
     const trimmed = part.trim();
     const commaIndex = trimmed.indexOf(",");
     if (commaIndex > 0) {

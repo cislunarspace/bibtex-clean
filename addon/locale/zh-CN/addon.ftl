@@ -1,4 +1,5 @@
 menuitem-clean-items = 清理条目
+menuitem-undo-last-clean = 撤销上次清理
 dialog-title-clean-items = 确认清理条目
 dialog-summary-clean-items = 将对 { $total } 个条目应用 { $changes } 条清理，{ $unchanged } 个条目无需清理。此操作可在执行后撤销最近一次。
 dialog-button-confirm-clean = 确认清理
@@ -9,4 +10,6 @@ dialog-column-change = 变更
 message-no-changes = 选中条目无需清理
 message-success-cleaned = 已清理条目
 message-success-partial = 部分条目已清理
+message-success-undone = 已撤销清理
+message-undo = 撤销
 message-error-clean-failed = { $count } 个条目清理失败
