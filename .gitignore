@@ -1,7 +1,16 @@
-__pycache__/
-*.pyc
-*.pyo
-*.egg-info/
+# dot files
+.DS_Store
+
+# Node.js
+node_modules
+pnpm-lock.yaml
+yarn.lock
+
+# TSC
+tsconfig.tsbuildinfo
+
+# Scaffold
 .env
-.venv/
-*.bib
+.scaffold
+build
+logs
