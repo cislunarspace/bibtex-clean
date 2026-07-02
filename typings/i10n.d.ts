@@ -3,7 +3,4 @@
 /* eslint-disable */
 // @ts-nocheck
 export type FluentMessageId =
-  | 'menuitem-copy-cleaned-bibtex'
-  | 'message-error-export-failed'
-  | 'message-error-no-selection'
-  | 'message-success-copied';
+  | 'placeholder-do-not-use';

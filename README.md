@@ -63,9 +63,7 @@ npm run lint:check
 │   └── locale/         # 本地化文件
 ├── src/                # TypeScript 源码
 │   ├── hooks.ts        # 生命周期与菜单注册
-│   ├── modules/
-│   │   ├── bibtexClean.ts   # BibTeX 清理逻辑
-│   │   └── bibtexExport.ts  # 导出与剪贴板复制
+│   ├── modules/        # 业务模块
 │   └── utils/
 │       └── locale.ts   # 本地化工具
 └── zotero-plugin.config.ts  # 构建配置

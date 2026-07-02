@@ -1,5 +1,4 @@
-import { copyCleanBibTeXToClipboard } from "./modules/bibtexExport";
-import { getString, initLocale } from "./utils/locale";
+import { initLocale } from "./utils/locale";
 import { createZToolkit } from "./utils/ztoolkit";
 
 async function onStartup() {
@@ -24,16 +23,6 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
   win.MozXULElement.insertFTLIfNeeded(
     `${addon.data.config.addonRef}-mainWindow.ftl`,
   );
-
-  // 注册右键菜单项
-  ztoolkit.Menu.register("item", {
-    tag: "menuitem",
-    id: "zotero-itemmenu-bibtexclean-copy",
-    label: getString("menuitem-copy-cleaned-bibtex"),
-    commandListener: () => {
-      copyCleanBibTeXToClipboard();
-    },
-  });
 }
 
 async function onMainWindowUnload(_win: Window): Promise<void> {

@@ -1,4 +1,2 @@
-menuitem-copy-cleaned-bibtex = Copy Cleaned BibTeX
-message-success-copied = Cleaned BibTeX copied to clipboard
-message-error-no-selection = No items selected
-message-error-export-failed = Export failed: { $message }
+# Placeholder to keep FluentMessageId non-empty until cleaning keys are added.
+placeholder-do-not-use = Placeholder
