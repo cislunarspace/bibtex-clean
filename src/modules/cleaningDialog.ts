@@ -1,4 +1,4 @@
-import type { Change } from "./itemCleaning";
+import type { Change } from "./changes";
 import { getString } from "../utils/locale";
 
 /**

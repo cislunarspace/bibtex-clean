@@ -1,6 +1,6 @@
 import { config } from "../package.json";
 import hooks from "./hooks";
-import type { LastCleanOperation } from "./modules/itemCleaning";
+import type { LastCleanOperation } from "./modules/changes";
 import { createZToolkit } from "./utils/ztoolkit";
 
 class Addon {

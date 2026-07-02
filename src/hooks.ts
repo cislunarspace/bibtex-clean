@@ -1,10 +1,10 @@
+import type { Change } from "./modules/changes";
+import { computeChanges } from "./modules/changes";
 import {
   applyChanges,
-  computeChanges,
   toCleanableItem,
   undoChanges,
-  type Change,
-} from "./modules/itemCleaning";
+} from "./modules/zoteroWriter";
 import { openCleaningConfirmationDialog } from "./modules/cleaningDialog";
 import { getString, initLocale } from "./utils/locale";
 import { createZToolkit } from "./utils/ztoolkit";
