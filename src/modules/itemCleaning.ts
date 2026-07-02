@@ -82,6 +82,9 @@ export function computeChanges(items: CleanableItem[]): Change[] {
 /**
  * 从 Zotero Item 提取可清理字段。
  * 只处理普通文献条目（regular item），忽略笔记、附件等。
+ *
+ * 注意：Zotero 中作者信息存储在 creators 而非单一字段中，
+ * 这里将 creatorType 为 author 的创作者合并为便于清理的字符串。
  */
 export function toCleanableItem(item: Zotero.Item): CleanableItem | undefined {
   if (!item.isRegularItem()) {
@@ -90,7 +93,7 @@ export function toCleanableItem(item: Zotero.Item): CleanableItem | undefined {
   return {
     key: item.key,
     title: item.getField("title") as string,
-    author: (item.getField("author") as string) || undefined,
+    author: formatAuthors(item.getCreatorsJSON()),
     number: (item.getField("number") as string) || undefined,
   };
 }
@@ -110,7 +113,11 @@ export async function applyChanges(changes: Change[]): Promise<{
       if (!item) {
         throw new Error(`Item ${change.itemKey} not found`);
       }
-      item.setField(change.field as any, change.newValue);
+      if (change.field === "author") {
+        applyAuthorChange(item, change.newValue);
+      } else {
+        item.setField(change.field as any, change.newValue);
+      }
       await item.saveTx();
       succeeded.push(change);
     } catch (error) {
@@ -118,4 +125,41 @@ export async function applyChanges(changes: Change[]): Promise<{
     }
   }
   return { succeeded, failed };
+}
+
+function formatAuthors(
+  creators: _ZoteroTypes.Item.CreatorJSON[],
+): string | undefined {
+  const authors = creators
+    .filter((creator) => creator.creatorType === "author")
+    .map(
+      (creator) => creator.name || `${creator.lastName}, ${creator.firstName}`,
+    );
+  return authors.length > 0 ? authors.join("; ") : undefined;
+}
+
+function applyAuthorChange(item: Zotero.Item, newValue: string): void {
+  const otherCreators = item
+    .getCreatorsJSON()
+    .filter((creator) => creator.creatorType !== "author");
+  const newAuthors = parseAuthors(newValue);
+  item.setCreators([...otherCreators, ...newAuthors]);
+}
+
+function parseAuthors(value: string): _ZoteroTypes.Item.CreatorJSON[] {
+  return value.split(" and ").map((part) => {
+    const trimmed = part.trim();
+    const commaIndex = trimmed.indexOf(",");
+    if (commaIndex > 0) {
+      return {
+        creatorType: "author",
+        lastName: trimmed.slice(0, commaIndex).trim(),
+        firstName: trimmed.slice(commaIndex + 1).trim(),
+      };
+    }
+    return {
+      creatorType: "author",
+      name: trimmed,
+    };
+  });
 }

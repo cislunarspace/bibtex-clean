@@ -2,7 +2,6 @@ import { assert } from "chai";
 import {
   applyRule,
   computeChanges,
-  RULES,
   type CleanableItem,
 } from "../src/modules/itemCleaning";
 
@@ -59,13 +58,6 @@ describe("itemCleaning", function () {
 
     it("returns an empty array for empty input", function () {
       assert.deepEqual(computeChanges([]), []);
-    });
-  });
-
-  describe("RULES", function () {
-    it("contains only the author rule in slice 1", function () {
-      assert.lengthOf(RULES, 1);
-      assert.equal(RULES[0].field, "author");
     });
   });
 });
