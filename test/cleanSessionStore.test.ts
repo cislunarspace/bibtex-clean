@@ -1,6 +1,6 @@
 import { assert } from "chai";
 import { CleanSessionStore } from "../src/modules/cleanSessionStore";
-import type { Change } from "../src/modules/itemCleaning";
+import type { Change } from "../src/modules/changes";
 
 describe("CleanSessionStore", function () {
   let store: CleanSessionStore;

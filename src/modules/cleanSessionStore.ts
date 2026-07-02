@@ -1,4 +1,4 @@
-import type { Change } from "./itemCleaning";
+import type { Change } from "./changes";
 
 export type LastCleanOperation = {
   changes: Change[];
