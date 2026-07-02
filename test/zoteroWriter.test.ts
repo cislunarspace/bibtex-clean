@@ -4,7 +4,7 @@ import {
   applyChanges,
   undoChanges,
 } from "../src/modules/zoteroWriter";
-import type { Change } from "../src/modules/changes";
+import type { FieldChange } from "../src/modules/changes";
 
 describe("zoteroWriter", function () {
   describe("applyAuthorChange", function () {
@@ -59,17 +59,15 @@ describe("zoteroWriter", function () {
         throw new Error(`Item ${key} not found`);
       };
 
-      const changes: Change[] = [
+      const changes: FieldChange[] = [
         {
           itemKey: "A1",
-          itemTitle: "Good Paper",
           field: "number",
           oldValue: "第三期",
           newValue: "3",
         },
         {
           itemKey: "A2",
-          itemTitle: "Bad Paper",
           field: "number",
           oldValue: "第五期",
           newValue: "5",
@@ -107,10 +105,9 @@ describe("zoteroWriter", function () {
         throw new Error(`Item ${key} not found`);
       };
 
-      const changes: Change[] = [
+      const changes: FieldChange[] = [
         {
           itemKey: "A1",
-          itemTitle: "Paper One",
           field: "number",
           oldValue: "第三期",
           newValue: "3",
@@ -138,10 +135,9 @@ describe("zoteroWriter", function () {
         throw new Error(`Item ${key} not found`);
       };
 
-      const changes: Change[] = [
+      const changes: FieldChange[] = [
         {
           itemKey: "A1",
-          itemTitle: "Paper One",
           field: "author",
           oldValue: "Smith, John; Doe, Jane",
           newValue: "Smith, John and Doe, Jane",
@@ -172,17 +168,15 @@ describe("zoteroWriter", function () {
         throw new Error(`Item ${key} not found`);
       };
 
-      const changes: Change[] = [
+      const changes: FieldChange[] = [
         {
           itemKey: "A1",
-          itemTitle: "Good Paper",
           field: "number",
           oldValue: "第三期",
           newValue: "3",
         },
         {
           itemKey: "A2",
-          itemTitle: "Bad Paper",
           field: "number",
           oldValue: "第五期",
           newValue: "5",

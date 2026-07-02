@@ -6,6 +6,7 @@ import {
   undoChanges,
 } from "./modules/zoteroWriter";
 import { openCleaningConfirmationDialog } from "./modules/cleaningDialog";
+import { cleanSessionStore } from "./modules/cleanSessionStore";
 import { getString, initLocale } from "./utils/locale";
 import { createZToolkit } from "./utils/ztoolkit";
 
@@ -45,7 +46,7 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
     tag: "menuitem",
     id: "zotero-itemmenu-bibtexclean-undo",
     label: getString("menuitem-undo-last-clean"),
-    isDisabled: () => !addon.data.lastCleanOperation,
+    isDisabled: () => !cleanSessionStore.hasUndo(),
     commandListener: () => {
       undoLastCleanOperation();
     },
@@ -94,7 +95,7 @@ async function cleanSelectedItems(): Promise<void> {
   }
 
   if (succeeded.length > 0) {
-    addon.data.lastCleanOperation = { changes: cloneChanges(succeeded) };
+    cleanSessionStore.record(succeeded);
     if (failed.length > 0) {
       showInfo(getString("message-success-partial"));
     } else {
@@ -106,17 +107,11 @@ async function cleanSelectedItems(): Promise<void> {
   }
 }
 
-function cloneChanges(changes: Change[]): Change[] {
-  return changes.map((change) => ({ ...change }));
-}
-
 async function undoLastCleanOperation(): Promise<void> {
-  const operation = addon.data.lastCleanOperation;
+  const operation = cleanSessionStore.consume();
   if (!operation) {
     return;
   }
-
-  addon.data.lastCleanOperation = undefined;
 
   const { succeeded, failed } = await undoChanges(operation.changes);
   if (failed.length > 0) {
