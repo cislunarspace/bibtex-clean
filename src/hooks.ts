@@ -80,11 +80,11 @@ async function cleanSelectedItems(): Promise<void> {
     return;
   }
 
-  const confirmed = await openCleaningConfirmationDialog(
+  const result = await openCleaningConfirmationDialog(
     changes,
     cleanableItems.length,
   );
-  if (!confirmed) {
+  if (result === "cancel") {
     return;
   }
 

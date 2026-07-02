@@ -1,84 +1,97 @@
+/**
+ * 条目清理确认对话框。
+ *
+ * 三层结构：
+ * 1. renderDialog — 纯数据，可快照测试
+ * 2. renderDialogHtml — 消费结构化数据，拼装 HTML
+ * 3. openCleaningConfirmationDialog — toolkit 对话框 + waitForClose seam
+ */
+
 import type { Change } from "./changes";
 import { getString } from "../utils/locale";
 
+// ── 结构化数据类型 ──────────────────────────────────────────────
+
+export type DialogRow = {
+  itemTitle: string;
+  fieldName: string;
+  oldValue: string;
+  newValue: string;
+};
+
+export type DialogData = {
+  summary: string;
+  columns: [string, string, string];
+  rows: DialogRow[];
+};
+
+// ── 纯数据渲染 ──────────────────────────────────────────────────
+
+type StringGetter = (
+  key: string,
+  options?: { args?: Record<string, string> },
+) => string;
+
 /**
- * 打开条目清理确认对话框。
- * @param changes 要展示的变更列表
- * @param totalItemCount 选中的可清理条目总数（含无需清理的条目）
- * @returns 用户是否点击「确认清理」
+ * 从变更列表计算对话框所需的结构化数据。
+ * 纯函数，不依赖 DOM，可直接快照测试。
+ *
+ * @param getStringFn 可注入的 i18n 函数，默认使用全局 getString
  */
-export async function openCleaningConfirmationDialog(
+export function renderDialog(
   changes: Change[],
   totalItemCount: number,
-): Promise<boolean> {
-  const dialog = new ztoolkit.Dialog(1, 1);
+  getStringFn: StringGetter = getString as StringGetter,
+): DialogData {
+  const changedItemCount = new Set(changes.map((c) => c.itemKey)).size;
+  const unchangedItemCount = totalItemCount - changedItemCount;
 
-  dialog.addCell(
-    0,
-    0,
-    {
-      tag: "div",
-      namespace: "html",
-      id: "bibtex-clean-dialog-content",
-      styles: {
-        width: "600px",
-        maxHeight: "400px",
-        overflowY: "auto",
-        padding: "12px 16px",
+  return {
+    summary: getStringFn("dialog-summary-clean-items", {
+      args: {
+        total: String(totalItemCount),
+        changes: String(changes.length),
+        unchanged: String(unchangedItemCount),
       },
-      properties: {
-        innerHTML: renderDialogHtml(changes, totalItemCount),
-      },
-    },
-    true,
-  );
-
-  dialog
-    .addButton(getString("dialog-button-cancel"), "cancel")
-    .addButton(getString("dialog-button-confirm-clean"), "confirm-clean");
-
-  const dialogData: { _lastButtonId?: string } = {};
-  dialog.setDialogData(dialogData);
-
-  dialog.open(getString("dialog-title-clean-items"), {
-    centerscreen: true,
-    resizable: true,
-    fitContent: true,
-  });
-
-  await new Promise<void>((resolve) => {
-    const check = () => {
-      if (dialog.window?.closed) {
-        resolve();
-        return;
-      }
-      setTimeout(check, 100);
-    };
-    check();
-  });
-
-  return dialogData._lastButtonId === "confirm-clean";
+    }),
+    columns: [
+      getStringFn("dialog-column-item"),
+      getStringFn("dialog-column-field"),
+      getStringFn("dialog-column-change"),
+    ],
+    rows: changes.map((change) => ({
+      itemTitle: change.itemTitle,
+      fieldName: change.field,
+      oldValue: change.oldValue,
+      newValue: change.newValue,
+    })),
+  };
 }
 
-function renderDialogHtml(changes: Change[], totalItemCount: number): string {
-  const rows = changes
+// ── HTML 拼装 ───────────────────────────────────────────────────
+
+/**
+ * 将结构化对话框数据渲染为 HTML 字符串。
+ * 只做 HTML 拼装，不包含业务逻辑。
+ */
+export function renderDialogHtml(data: DialogData): string {
+  const [colItem, colField, colChange] = data.columns;
+
+  const rows = data.rows
     .map(
-      (change) => `
+      (row) => `
     <tr>
-      <td class="item-title">${escapeHtml(change.itemTitle)}</td>
-      <td class="field-name">${escapeHtml(change.field)}</td>
+      <td class="item-title">${escapeHtml(row.itemTitle)}</td>
+      <td class="field-name">${escapeHtml(row.fieldName)}</td>
       <td>
-        <span class="old-value">${escapeHtml(change.oldValue)}</span>
+        <span class="old-value">${escapeHtml(row.oldValue)}</span>
         <span class="arrow">→</span>
-        <span class="new-value">${escapeHtml(change.newValue)}</span>
+        <span class="new-value">${escapeHtml(row.newValue)}</span>
       </td>
     </tr>
   `,
     )
     .join("");
-
-  const changedItemCount = new Set(changes.map((c) => c.itemKey)).size;
-  const unchangedItemCount = totalItemCount - changedItemCount;
 
   return `
     <style>
@@ -127,20 +140,14 @@ function renderDialogHtml(changes: Change[], totalItemCount: number): string {
       }
     </style>
     <div class="bibtex-clean-summary">
-      ${getString("dialog-summary-clean-items", {
-        args: {
-          total: String(totalItemCount),
-          changes: String(changes.length),
-          unchanged: String(unchangedItemCount),
-        },
-      })}
+      ${escapeHtml(data.summary)}
     </div>
     <table class="bibtex-clean-table">
       <thead>
         <tr>
-          <th>${getString("dialog-column-item")}</th>
-          <th>${getString("dialog-column-field")}</th>
-          <th>${getString("dialog-column-change")}</th>
+          <th>${escapeHtml(colItem)}</th>
+          <th>${escapeHtml(colField)}</th>
+          <th>${escapeHtml(colChange)}</th>
         </tr>
       </thead>
       <tbody>
@@ -150,11 +157,87 @@ function renderDialogHtml(changes: Change[], totalItemCount: number): string {
   `;
 }
 
-function escapeHtml(text: string): string {
+export function escapeHtml(text: string): string {
   return text
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+// ── waitForClose seam ───────────────────────────────────────────
+
+/**
+ * 轮询等待对话框关闭。默认实现，可注入 fake 用于测试。
+ */
+function defaultWaitForClose(
+  dialog: InstanceType<ZToolkit["Dialog"]>,
+): Promise<void> {
+  return new Promise<void>((resolve) => {
+    const check = () => {
+      if (dialog.window?.closed) {
+        resolve();
+        return;
+      }
+      setTimeout(check, 100);
+    };
+    check();
+  });
+}
+
+// ── 对话框入口 ──────────────────────────────────────────────────
+
+/**
+ * 打开条目清理确认对话框。
+ *
+ * @param changes 要展示的变更列表
+ * @param totalItemCount 选中的可清理条目总数（含无需清理的条目）
+ * @param waitForClose 可注入的关闭等待函数，默认轮询 dialog.window.closed
+ * @returns 'confirm' 或 'cancel'
+ */
+export async function openCleaningConfirmationDialog(
+  changes: Change[],
+  totalItemCount: number,
+  waitForClose?: (dialog: InstanceType<ZToolkit["Dialog"]>) => Promise<void>,
+): Promise<"confirm" | "cancel"> {
+  const data = renderDialog(changes, totalItemCount);
+  const html = renderDialogHtml(data);
+
+  const dialog = new ztoolkit.Dialog(1, 1);
+
+  dialog.addCell(
+    0,
+    0,
+    {
+      tag: "div",
+      namespace: "html",
+      id: "bibtex-clean-dialog-content",
+      styles: {
+        width: "600px",
+        maxHeight: "400px",
+        overflowY: "auto",
+        padding: "12px 16px",
+      },
+      properties: { innerHTML: html },
+    },
+    true,
+  );
+
+  dialog
+    .addButton(getString("dialog-button-cancel"), "cancel")
+    .addButton(getString("dialog-button-confirm-clean"), "confirm-clean");
+
+  const dialogData: { _lastButtonId?: string } = {};
+  dialog.setDialogData(dialogData);
+
+  dialog.open(getString("dialog-title-clean-items"), {
+    centerscreen: true,
+    resizable: true,
+    fitContent: true,
+  });
+
+  await (waitForClose ?? defaultWaitForClose)(dialog);
+
+  return dialogData._lastButtonId === "confirm-clean" ? "confirm" : "cancel";
 }
