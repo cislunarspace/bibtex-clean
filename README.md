@@ -9,7 +9,7 @@
 
 ## 安装
 
-1. 在 [Releases](https://github.com/ouyangjiahong/bibtex-clean/releases) 页面下载最新 `.xpi` 文件。
+1. 在 [Releases](https://github.com/cislunarspace/bibtex-clean/releases) 页面下载最新 `.xpi` 文件。
 2. 打开 Zotero，点击 `Tools → Add-ons`。
 3. 点击右上角的齿轮图标，选择 `Install Add-on From File...`。
 4. 选择下载的 `.xpi` 文件，按提示完成安装。

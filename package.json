@@ -12,13 +12,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ouyangjiahong/bibtex-clean.git"
+    "url": "git+https://github.com/cislunarspace/bibtex-clean.git"
   },
   "author": "ouyangjiahong",
   "bugs": {
-    "url": "https://github.com/ouyangjiahong/bibtex-clean/issues"
+    "url": "https://github.com/cislunarspace/bibtex-clean/issues"
   },
-  "homepage": "https://github.com/ouyangjiahong/bibtex-clean#readme",
+  "homepage": "https://github.com/cislunarspace/bibtex-clean#readme",
   "license": "AGPL-3.0-or-later",
   "scripts": {
     "start": "zotero-plugin serve",
