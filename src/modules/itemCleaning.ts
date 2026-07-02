@@ -127,7 +127,7 @@ export async function applyChanges(changes: Change[]): Promise<{
   return { succeeded, failed };
 }
 
-function formatAuthors(
+export function formatAuthors(
   creators: _ZoteroTypes.Item.CreatorJSON[],
 ): string | undefined {
   const authors = creators
@@ -139,14 +139,28 @@ function formatAuthors(
 }
 
 function applyAuthorChange(item: Zotero.Item, newValue: string): void {
-  const otherCreators = item
-    .getCreatorsJSON()
-    .filter((creator) => creator.creatorType !== "author");
   const newAuthors = parseAuthors(newValue);
-  item.setCreators([...otherCreators, ...newAuthors]);
+  const creators = item.getCreatorsJSON();
+  const result: _ZoteroTypes.Item.CreatorJSON[] = [];
+  let authorIndex = 0;
+  for (const creator of creators) {
+    if (creator.creatorType === "author") {
+      if (authorIndex < newAuthors.length) {
+        result.push(newAuthors[authorIndex]);
+        authorIndex++;
+      }
+    } else {
+      result.push(creator);
+    }
+  }
+  while (authorIndex < newAuthors.length) {
+    result.push(newAuthors[authorIndex]);
+    authorIndex++;
+  }
+  item.setCreators(result);
 }
 
-function parseAuthors(value: string): _ZoteroTypes.Item.CreatorJSON[] {
+export function parseAuthors(value: string): _ZoteroTypes.Item.CreatorJSON[] {
   return value.split(" and ").map((part) => {
     const trimmed = part.trim();
     const commaIndex = trimmed.indexOf(",");
