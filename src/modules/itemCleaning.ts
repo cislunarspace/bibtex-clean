@@ -1,0 +1,121 @@
+/**
+ * 条目清理核心逻辑。
+ *
+ * 该模块保持纯函数，不依赖 Zotero 运行时，便于测试。
+ */
+
+export type CleanableItem = {
+  key: string;
+  title: string;
+  author?: string;
+  number?: string;
+};
+
+export type Change = {
+  itemKey: string;
+  itemTitle: string;
+  field: string;
+  oldValue: string;
+  newValue: string;
+};
+
+export type LastCleanOperation = {
+  changes: Change[];
+};
+
+export type CleaningRule = {
+  field: keyof CleanableItem;
+  apply: (value: string) => string | undefined;
+};
+
+/**
+ * 清理规则数组。当前仅包含 author 字段规则（Slice 1）。
+ */
+export const RULES: CleaningRule[] = [
+  {
+    field: "author",
+    apply: (value) => {
+      if (!value.includes(";")) {
+        return undefined;
+      }
+      return value.replace(/\s*;\s*/g, " and ");
+    },
+  },
+];
+
+/**
+ * 对指定字段应用清理规则。
+ * @returns 变更后的新值；无需变更时返回 undefined。
+ */
+export function applyRule(field: string, value: string): string | undefined {
+  const rule = RULES.find((r) => r.field === field);
+  return rule?.apply(value);
+}
+
+/**
+ * 计算一组条目的清理变更。
+ * @returns 只包含实际会发生变更的字段。
+ */
+export function computeChanges(items: CleanableItem[]): Change[] {
+  const changes: Change[] = [];
+  for (const item of items) {
+    for (const rule of RULES) {
+      const value = item[rule.field];
+      if (typeof value !== "string") {
+        continue;
+      }
+      const newValue = rule.apply(value);
+      if (newValue !== undefined && newValue !== value) {
+        changes.push({
+          itemKey: item.key,
+          itemTitle: item.title,
+          field: rule.field,
+          oldValue: value,
+          newValue,
+        });
+      }
+    }
+  }
+  return changes;
+}
+
+/**
+ * 从 Zotero Item 提取可清理字段。
+ * 只处理普通文献条目（regular item），忽略笔记、附件等。
+ */
+export function toCleanableItem(item: Zotero.Item): CleanableItem | undefined {
+  if (!item.isRegularItem()) {
+    return undefined;
+  }
+  return {
+    key: item.key,
+    title: item.getField("title") as string,
+    author: (item.getField("author") as string) || undefined,
+    number: (item.getField("number") as string) || undefined,
+  };
+}
+
+/**
+ * 将变更写回 Zotero 条目。
+ */
+export async function applyChanges(changes: Change[]): Promise<{
+  succeeded: Change[];
+  failed: { change: Change; error: Error }[];
+}> {
+  const succeeded: Change[] = [];
+  const failed: { change: Change; error: Error }[] = [];
+  for (const change of changes) {
+    try {
+      const item = await Zotero.Items.getAsync(change.itemKey);
+      if (!item) {
+        throw new Error(`Item ${change.itemKey} not found`);
+      }
+      item.setField(change.field as any, change.newValue);
+      await item.saveTx();
+      succeeded.push(change);
+    } catch (error) {
+      failed.push({ change, error: error as Error });
+    }
+  }
+  return { succeeded, failed };
+}

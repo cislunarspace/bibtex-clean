@@ -1,2 +1,11 @@
-# Placeholder to keep FluentMessageId non-empty until cleaning keys are added.
-placeholder-do-not-use = 占位符
+menuitem-clean-items = 清理条目
+dialog-title-clean-items = 确认清理条目
+dialog-summary-clean-items = 将对 { $total } 个条目应用 { $changes } 条清理。此操作可在执行后撤销最近一次。
+dialog-button-confirm-clean = 确认清理
+dialog-button-cancel = 取消
+dialog-column-item = 条目
+dialog-column-field = 字段
+dialog-column-change = 变更
+message-no-changes = 选中条目无需清理
+message-success-cleaned = 已清理条目
+message-error-clean-failed = { $count } 个条目清理失败

@@ -1,2 +1,11 @@
-# Placeholder to keep FluentMessageId non-empty until cleaning keys are added.
-placeholder-do-not-use = Placeholder
+menuitem-clean-items = Clean Items
+dialog-title-clean-items = Confirm Clean Items
+dialog-summary-clean-items = Will apply { $changes } cleanings to { $total } items. This operation can be undone once after execution.
+dialog-button-confirm-clean = Confirm Clean
+dialog-button-cancel = Cancel
+dialog-column-item = Item
+dialog-column-field = Field
+dialog-column-change = Change
+message-no-changes = No cleanings needed for the selected items
+message-success-cleaned = Items cleaned
+message-error-clean-failed = Failed to clean { $count } items

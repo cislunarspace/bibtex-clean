@@ -1,5 +1,6 @@
 import { config } from "../package.json";
 import hooks from "./hooks";
+import type { LastCleanOperation } from "./modules/itemCleaning";
 import { createZToolkit } from "./utils/ztoolkit";
 
 class Addon {
@@ -12,6 +13,7 @@ class Addon {
     locale?: {
       current: any;
     };
+    lastCleanOperation?: LastCleanOperation;
   };
   // Lifecycle hooks
   public hooks: typeof hooks;

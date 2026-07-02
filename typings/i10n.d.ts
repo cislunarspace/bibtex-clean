@@ -3,4 +3,14 @@
 /* eslint-disable */
 // @ts-nocheck
 export type FluentMessageId =
-  | 'placeholder-do-not-use';
+  | 'dialog-button-cancel'
+  | 'dialog-button-confirm-clean'
+  | 'dialog-column-change'
+  | 'dialog-column-field'
+  | 'dialog-column-item'
+  | 'dialog-summary-clean-items'
+  | 'dialog-title-clean-items'
+  | 'menuitem-clean-items'
+  | 'message-error-clean-failed'
+  | 'message-no-changes'
+  | 'message-success-cleaned';
