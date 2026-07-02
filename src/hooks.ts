@@ -69,23 +69,26 @@ async function cleanSelectedItems(): Promise<void> {
     return;
   }
 
-  const confirmed = await openCleaningConfirmationDialog(changes);
+  const confirmed = await openCleaningConfirmationDialog(
+    changes,
+    cleanableItems.length,
+  );
   if (!confirmed) {
     return;
   }
 
   const { succeeded, failed } = await applyChanges(changes);
   if (failed.length > 0) {
-    showError(
-      getString("message-error-clean-failed", {
-        args: { count: String(failed.length) },
-      }),
-    );
+    showErrorDetails(failed);
   }
 
   if (succeeded.length > 0) {
     addon.data.lastCleanOperation = { changes: cloneChanges(succeeded) };
-    showSuccess(getString("message-success-cleaned"));
+    if (failed.length > 0) {
+      showInfo(getString("message-success-partial"));
+    } else {
+      showSuccess(getString("message-success-cleaned"));
+    }
   }
 }
 
@@ -102,13 +105,23 @@ function showSuccess(text: string): void {
     .show();
 }
 
-function showError(text: string): void {
-  new ztoolkit.ProgressWindow(addon.data.config.addonName)
-    .createLine({
-      text,
-      type: "error",
-    })
-    .show();
+function showErrorDetails(failed: { change: Change; error: Error }[]): void {
+  const progressWindow = new ztoolkit.ProgressWindow(
+    addon.data.config.addonName,
+  );
+  progressWindow.createLine({
+    text: getString("message-error-clean-failed", {
+      args: { count: String(failed.length) },
+    }),
+    type: "error",
+  });
+  for (const { change, error } of failed) {
+    progressWindow.createLine({
+      text: `${change.itemTitle}: ${error.message}`,
+      type: "default",
+    });
+  }
+  progressWindow.show();
 }
 
 function showInfo(text: string): void {

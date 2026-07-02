@@ -4,10 +4,12 @@ import { getString } from "../utils/locale";
 /**
  * 打开条目清理确认对话框。
  * @param changes 要展示的变更列表
+ * @param totalItemCount 选中的可清理条目总数（含无需清理的条目）
  * @returns 用户是否点击「确认清理」
  */
 export async function openCleaningConfirmationDialog(
   changes: Change[],
+  totalItemCount: number,
 ): Promise<boolean> {
   const dialog = new ztoolkit.Dialog(1, 1);
 
@@ -25,7 +27,7 @@ export async function openCleaningConfirmationDialog(
         padding: "12px 16px",
       },
       properties: {
-        innerHTML: renderDialogHtml(changes),
+        innerHTML: renderDialogHtml(changes, totalItemCount),
       },
     },
     true,
@@ -58,7 +60,7 @@ export async function openCleaningConfirmationDialog(
   return dialogData._lastButtonId === "confirm-clean";
 }
 
-function renderDialogHtml(changes: Change[]): string {
+function renderDialogHtml(changes: Change[], totalItemCount: number): string {
   const rows = changes
     .map(
       (change) => `
@@ -74,6 +76,9 @@ function renderDialogHtml(changes: Change[]): string {
   `,
     )
     .join("");
+
+  const changedItemCount = new Set(changes.map((c) => c.itemKey)).size;
+  const unchangedItemCount = totalItemCount - changedItemCount;
 
   return `
     <style>
@@ -124,8 +129,9 @@ function renderDialogHtml(changes: Change[]): string {
     <div class="bibtex-clean-summary">
       ${getString("dialog-summary-clean-items", {
         args: {
-          total: String(new Set(changes.map((c) => c.itemKey)).size),
+          total: String(totalItemCount),
           changes: String(changes.length),
+          unchanged: String(unchangedItemCount),
         },
       })}
     </div>

@@ -13,4 +13,5 @@ export type FluentMessageId =
   | 'menuitem-clean-items'
   | 'message-error-clean-failed'
   | 'message-no-changes'
-  | 'message-success-cleaned';
+  | 'message-success-cleaned'
+  | 'message-success-partial';

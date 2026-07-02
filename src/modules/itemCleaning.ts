@@ -29,7 +29,7 @@ export type CleaningRule = {
 };
 
 /**
- * 清理规则数组。当前仅包含 author 字段规则（Slice 1）。
+ * 清理规则数组。
  */
 export const RULES: CleaningRule[] = [
   {
@@ -39,6 +39,16 @@ export const RULES: CleaningRule[] = [
         return undefined;
       }
       return value.replace(/\s*;\s*/g, " and ");
+    },
+  },
+  {
+    field: "number",
+    apply: (value) => {
+      const cleaned = value.replace(/[第期]/g, "").trim();
+      if (cleaned === value) {
+        return undefined;
+      }
+      return cleaned;
     },
   },
 ];
