@@ -25,6 +25,13 @@
 
 对单个字段应用一条清理规则后，该字段从旧值到新值的转换。一个目标条目可以产生零个或多个变更。
 
+变更类型按职责拆分为两个更窄的类型：
+
+- **字段变更（FieldChange）**：`{ itemKey, field, oldValue, newValue }`，writer 消费的纯数据载荷。
+- **展示变更（DisplayChange）**：`FieldChange & { itemTitle }`，对话框和通知消费的展示数据。
+
+`computeChanges` 返回 `DisplayChange`；writer 边界（`applyChanges` / `undoChanges`）接收 `FieldChange`。
+
 ### 模拟运行（Dry Run）
 
 在请求用户确认之前，先计算所有目标条目会产生的变更，但不写入 Zotero 数据库的过程。
@@ -40,6 +47,10 @@
 ### 清理会话（Clean Session）
 
 一次完整的清理操作流程：选择目标条目 → 模拟运行 → 用户确认 → 写入变更 → 通知结果。插件在内存中维护一个清理会话存储，记录最近一次成功清理的变更，用于支持撤销。
+
+### 清理会话存储（Clean Session Store）
+
+`CleanSessionStore` 管理最近一次清理操作的撤销状态。提供 `record`（记录并深克隆变更）、`current`（查看）、`consume`（取出并清空）、`hasUndo`（是否可撤销）四个方法。
 
 ### 撤销（Undo）
 
