@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <title>条目清理确认对话框原型</title>
+    <style>
+      :root {
+        --bg: #f5f5f5;
+        --card-bg: #fff;
+        --border: #d0d0d0;
+        --text: #333;
+        --muted: #666;
+        --accent: #0a84ff;
+        --danger: #d93025;
+        --success: #188038;
+        --removed: #ffebe9;
+        --added: #e6ffed;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        margin: 0;
+        padding: 24px;
+        line-height: 1.5;
+      }
+      h1 {
+        font-size: 20px;
+        margin-bottom: 8px;
+      }
+      .subtitle {
+        color: var(--muted);
+        margin-bottom: 20px;
+      }
+      .switcher {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 20px;
+      }
+      .switcher button {
+        padding: 8px 16px;
+        border: 1px solid var(--border);
+        background: var(--card-bg);
+        cursor: pointer;
+        border-radius: 4px;
+      }
+      .switcher button.active {
+        background: var(--accent);
+        color: white;
+        border-color: var(--accent);
+      }
+      .variant {
+        display: none;
+      }
+      .variant.active {
+        display: block;
+      }
+
+      /* 对话框外壳 */
+      .dialog {
+        max-width: 640px;
+        margin: 0 auto;
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+      }
+      .dialog-header {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border);
+      }
+      .dialog-header h2 {
+        margin: 0;
+        font-size: 16px;
+      }
+      .summary {
+        padding: 12px 20px;
+        background: #fafafa;
+        border-bottom: 1px solid var(--border);
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .dialog-body {
+        padding: 16px 20px;
+        max-height: 360px;
+        overflow-y: auto;
+      }
+      .dialog-footer {
+        padding: 12px 20px;
+        border-top: 1px solid var(--border);
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+      }
+      .btn {
+        padding: 8px 16px;
+        border-radius: 4px;
+        border: 1px solid var(--border);
+        background: var(--card-bg);
+        cursor: pointer;
+        font-size: 13px;
+      }
+      .btn-primary {
+        background: var(--accent);
+        color: white;
+        border-color: var(--accent);
+      }
+
+      /* Variant A: 表格布局 */
+      .change-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+      .change-table th,
+      .change-table td {
+        text-align: left;
+        padding: 8px 10px;
+        border-bottom: 1px solid #eee;
+        vertical-align: top;
+      }
+      .change-table th {
+        color: var(--muted);
+        font-weight: 600;
+        background: #fafafa;
+      }
+      .item-title {
+        font-weight: 600;
+        color: var(--text);
+      }
+      .field-name {
+        color: var(--muted);
+        font-family: "SFMono-Regular", Consolas, monospace;
+        font-size: 12px;
+      }
+      .old-value {
+        color: var(--danger);
+        text-decoration: line-through;
+      }
+      .new-value {
+        color: var(--success);
+      }
+      .arrow {
+        color: var(--muted);
+        padding: 0 4px;
+      }
+
+      /* Variant B: 卡片布局 */
+      .item-card {
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 12px 16px;
+        margin-bottom: 12px;
+      }
+      .item-card h3 {
+        margin: 0 0 8px 0;
+        font-size: 14px;
+      }
+      .field-row {
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+        padding: 6px 0;
+        font-size: 13px;
+        border-top: 1px dashed #eee;
+      }
+      .field-row:first-of-type {
+        border-top: none;
+      }
+
+      /* Variant C: Diff 布局 */
+      .diff-block {
+        margin-bottom: 16px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        overflow: hidden;
+      }
+      .diff-header {
+        background: #f0f0f0;
+        padding: 6px 12px;
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .diff-line {
+        display: flex;
+        font-family: "SFMono-Regular", Consolas, monospace;
+        font-size: 12px;
+        padding: 4px 12px;
+      }
+      .diff-line.removed {
+        background: var(--removed);
+      }
+      .diff-line.added {
+        background: var(--added);
+      }
+      .diff-line .marker {
+        width: 20px;
+        flex-shrink: 0;
+      }
+      .diff-line .content {
+        flex: 1;
+      }
+      .diff-line .field-tag {
+        color: var(--muted);
+        margin-right: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>条目清理确认对话框原型</h1>
+    <p class="subtitle">三种布局变体，点击按钮切换。最终只会保留一种。</p>
+
+    <div class="switcher">
+      <button class="active" onclick="show('A')">A. 表格布局</button>
+      <button onclick="show('B')">B. 卡片布局</button>
+      <button onclick="show('C')">C. Diff 布局</button>
+    </div>
+
+    <!-- Variant A: 表格布局 -->
+    <div id="variant-A" class="variant active">
+      <div class="dialog">
+        <div class="dialog-header"><h2>确认清理条目</h2></div>
+        <div class="summary">
+          将对 5 个条目中的 3 个应用 2 条清理规则。其余 2
+          个条目无需清理。此操作可在执行后撤销最近一次。
+        </div>
+        <div class="dialog-body">
+          <table class="change-table">
+            <thead>
+              <tr>
+                <th>条目</th>
+                <th>字段</th>
+                <th>变更</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="item-title">Zotero 插件开发实践</td>
+                <td class="field-name">author</td>
+                <td>
+                  <span class="old-value">Smith, John; Doe, Jane</span>
+                  <span class="arrow">→</span>
+                  <span class="new-value">Smith, John and Doe, Jane</span>
+                </td>
+              </tr>
+              <tr>
+                <td class="item-title">中文期刊文章示例</td>
+                <td class="field-name">number</td>
+                <td>
+                  <span class="old-value">第三期</span>
+                  <span class="arrow">→</span>
+                  <span class="new-value">3</span>
+                </td>
+              </tr>
+              <tr>
+                <td class="item-title">中文期刊文章示例</td>
+                <td class="field-name">author</td>
+                <td>
+                  <span class="old-value">张三; 李四</span>
+                  <span class="arrow">→</span>
+                  <span class="new-value">张三 and 李四</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="dialog-footer">
+          <button class="btn">取消</button>
+          <button class="btn btn-primary">确认清理</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Variant B: 卡片布局 -->
+    <div id="variant-B" class="variant">
+      <div class="dialog">
+        <div class="dialog-header"><h2>确认清理条目</h2></div>
+        <div class="summary">
+          将对 5 个条目中的 3 个应用 2 条清理规则。其余 2
+          个条目无需清理。此操作可在执行后撤销最近一次。
+        </div>
+        <div class="dialog-body">
+          <div class="item-card">
+            <h3>Zotero 插件开发实践</h3>
+            <div class="field-row">
+              <span class="field-name">author</span>
+              <span class="old-value">Smith, John; Doe, Jane</span>
+              <span class="arrow">→</span>
+              <span class="new-value">Smith, John and Doe, Jane</span>
+            </div>
+          </div>
+          <div class="item-card">
+            <h3>中文期刊文章示例</h3>
+            <div class="field-row">
+              <span class="field-name">number</span>
+              <span class="old-value">第三期</span>
+              <span class="arrow">→</span>
+              <span class="new-value">3</span>
+            </div>
+            <div class="field-row">
+              <span class="field-name">author</span>
+              <span class="old-value">张三; 李四</span>
+              <span class="arrow">→</span>
+              <span class="new-value">张三 and 李四</span>
+            </div>
+          </div>
+        </div>
+        <div class="dialog-footer">
+          <button class="btn">取消</button>
+          <button class="btn btn-primary">确认清理</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Variant C: Diff 布局 -->
+    <div id="variant-C" class="variant">
+      <div class="dialog">
+        <div class="dialog-header"><h2>确认清理条目</h2></div>
+        <div class="summary">
+          将对 5 个条目中的 3 个应用 2 条清理规则。其余 2
+          个条目无需清理。此操作可在执行后撤销最近一次。
+        </div>
+        <div class="dialog-body">
+          <div class="diff-block">
+            <div class="diff-header">Zotero 插件开发实践</div>
+            <div class="diff-line removed">
+              <span class="marker">-</span>
+              <span class="content"
+                ><span class="field-tag">author</span>Smith, John; Doe,
+                Jane</span
+              >
+            </div>
+            <div class="diff-line added">
+              <span class="marker">+</span>
+              <span class="content"
+                ><span class="field-tag">author</span>Smith, John and Doe,
+                Jane</span
+              >
+            </div>
+          </div>
+          <div class="diff-block">
+            <div class="diff-header">中文期刊文章示例</div>
+            <div class="diff-line removed">
+              <span class="marker">-</span>
+              <span class="content"
+                ><span class="field-tag">number</span>第三期</span
+              >
+            </div>
+            <div class="diff-line added">
+              <span class="marker">+</span>
+              <span class="content"
+                ><span class="field-tag">number</span>3</span
+              >
+            </div>
+            <div class="diff-line removed">
+              <span class="marker">-</span>
+              <span class="content"
+                ><span class="field-tag">author</span>张三; 李四</span
+              >
+            </div>
+            <div class="diff-line added">
+              <span class="marker">+</span>
+              <span class="content"
+                ><span class="field-tag">author</span>张三 and 李四</span
+              >
+            </div>
+          </div>
+        </div>
+        <div class="dialog-footer">
+          <button class="btn">取消</button>
+          <button class="btn btn-primary">确认清理</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function show(id) {
+        document
+          .querySelectorAll(".variant")
+          .forEach((el) => el.classList.remove("active"));
+        document
+          .querySelectorAll(".switcher button")
+          .forEach((el) => el.classList.remove("active"));
+        document.getElementById("variant-" + id).classList.add("active");
+        event.target.classList.add("active");
+      }
+    </script>
+  </body>
+</html>
