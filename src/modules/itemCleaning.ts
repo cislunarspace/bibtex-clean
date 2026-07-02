@@ -11,13 +11,19 @@ export type CleanableItem = {
   number?: string;
 };
 
-export type Change = {
+export type FieldChange = {
   itemKey: string;
-  itemTitle: string;
   field: string;
   oldValue: string;
   newValue: string;
 };
+
+export type DisplayChange = FieldChange & {
+  itemTitle: string;
+};
+
+/** @deprecated Use {@link FieldChange} or {@link DisplayChange} instead. */
+export type Change = DisplayChange;
 
 export type LastCleanOperation = {
   changes: Change[];
