@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Clean specific fields of a BibTeX file.
+"""清理 BibTeX 文件的指定字段。
 
-1. Replace ';' with ' and ' inside author fields.
-2. Remove the characters '第' and '期' from number fields.
+1. 将 author 字段中的 ';' 替换为 ' and '。
+2. 从 number 字段中移除 '第' 和 '期'。
 
-All other lines are left unchanged.
+其余行保持不变。
 """
 
 import re
@@ -16,7 +16,7 @@ OUTPUT_PATH = Path("/home/ouyangjiahong/Downloads/1_modified.bib")
 
 
 def transform_author_line(line: str) -> str:
-    """Replace semicolons with spaced 'and' inside an author field line."""
+    """在 author 字段行内，将分号替换为带空格的 'and'。"""
     m = re.match(r"^(\s*author\s*=\s*\{)(.*)(\},?\s*)$", line)
     if not m:
         return line
@@ -25,7 +25,7 @@ def transform_author_line(line: str) -> str:
 
 
 def transform_number_line(line: str) -> str:
-    """Remove '第' and '期' from a number field line."""
+    """从 number 字段行中移除 '第' 和 '期'。"""
     m = re.match(r"^(\s*number\s*=\s*\{)(.*)(\},?\s*)$", line)
     if not m:
         return line
@@ -34,7 +34,7 @@ def transform_number_line(line: str) -> str:
 
 
 def transform_line(line: str) -> str:
-    """Apply all transformations to a single line."""
+    """对单行应用所有转换。"""
     line = transform_author_line(line)
     line = transform_number_line(line)
     return line
@@ -42,7 +42,7 @@ def transform_line(line: str) -> str:
 
 def main() -> int:
     if not INPUT_PATH.is_file():
-        print(f"Error: input file not found: {INPUT_PATH}", file=sys.stderr)
+        print(f"错误：找不到输入文件：{INPUT_PATH}", file=sys.stderr)
         return 1
 
     with INPUT_PATH.open("r", encoding="utf-8") as f:
@@ -53,7 +53,7 @@ def main() -> int:
     with OUTPUT_PATH.open("w", encoding="utf-8") as f:
         f.writelines(new_lines)
 
-    print(f"Wrote modified BibTeX to: {OUTPUT_PATH}")
+    print(f"已写入修改后的 BibTeX：{OUTPUT_PATH}")
     return 0
 
 
