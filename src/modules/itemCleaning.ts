@@ -138,28 +138,38 @@ export function formatAuthors(
   return authors.length > 0 ? authors.join("; ") : undefined;
 }
 
-function applyAuthorChange(item: Zotero.Item, newValue: string): void {
+export function applyAuthorChange(item: Zotero.Item, newValue: string): void {
   const newAuthors = parseAuthors(newValue);
   const creators = item.getCreatorsJSON();
+  const originalAuthorCount = creators.filter(
+    (creator) => creator.creatorType === "author",
+  ).length;
+  if (newAuthors.length !== originalAuthorCount) {
+    throw new Error(
+      `Author count mismatch: expected ${originalAuthorCount}, got ${newAuthors.length}`,
+    );
+  }
   const result: _ZoteroTypes.Item.CreatorJSON[] = [];
   let authorIndex = 0;
   for (const creator of creators) {
     if (creator.creatorType === "author") {
-      if (authorIndex < newAuthors.length) {
-        result.push(newAuthors[authorIndex]);
-        authorIndex++;
-      }
+      result.push(newAuthors[authorIndex]);
+      authorIndex++;
     } else {
       result.push(creator);
     }
   }
-  while (authorIndex < newAuthors.length) {
-    result.push(newAuthors[authorIndex]);
-    authorIndex++;
-  }
   item.setCreators(result);
 }
 
+/**
+ * 将 author 字符串解析为 Zotero creator 数组。
+ *
+ * 已知限制：
+ * - 按小写 " and " 拆分，与清理规则输出一致；
+ * - 含逗号的机构名（如 "ACME, Inc."）会被拆成 lastName/firstName，
+ *   当前仅处理个人作者常见的 "Last, First" 格式。
+ */
 export function parseAuthors(value: string): _ZoteroTypes.Item.CreatorJSON[] {
   return value.split(" and ").map((part) => {
     const trimmed = part.trim();

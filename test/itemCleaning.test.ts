@@ -1,5 +1,6 @@
 import { assert } from "chai";
 import {
+  applyAuthorChange,
   applyRule,
   computeChanges,
   formatAuthors,
@@ -105,4 +106,43 @@ describe("itemCleaning", function () {
       ]);
     });
   });
+
+  describe("applyAuthorChange", function () {
+    it("replaces authors in place and preserves non-author creator order", function () {
+      const creators: _ZoteroTypes.Item.CreatorJSON[] = [
+        { creatorType: "author", firstName: "John", lastName: "Smith" },
+        { creatorType: "editor", firstName: "Jane", lastName: "Doe" },
+        { creatorType: "author", firstName: "Bob", lastName: "Brown" },
+      ];
+      const item = createMockItem(creators);
+      applyAuthorChange(item, "Smith, John and Brown, Bob");
+      assert.deepEqual(creators, [
+        { creatorType: "author", lastName: "Smith", firstName: "John" },
+        { creatorType: "editor", firstName: "Jane", lastName: "Doe" },
+        { creatorType: "author", lastName: "Brown", firstName: "Bob" },
+      ]);
+    });
+
+    it("throws when the new author count does not match", function () {
+      const creators: _ZoteroTypes.Item.CreatorJSON[] = [
+        { creatorType: "author", firstName: "John", lastName: "Smith" },
+      ];
+      const item = createMockItem(creators);
+      assert.throws(() => {
+        applyAuthorChange(item, "Smith, John and Doe, Jane");
+      }, /Author count mismatch/);
+    });
+  });
 });
+
+function createMockItem(
+  creators: _ZoteroTypes.Item.CreatorJSON[],
+): Zotero.Item {
+  return {
+    getCreatorsJSON: () => creators,
+    setCreators: (newCreators: _ZoteroTypes.Item.CreatorJSON[]) => {
+      creators.length = 0;
+      creators.push(...newCreators);
+    },
+  } as unknown as Zotero.Item;
+}
