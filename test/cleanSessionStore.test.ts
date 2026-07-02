@@ -9,97 +9,107 @@ describe("CleanSessionStore", function () {
     store = new CleanSessionStore();
   });
 
-  const sampleChanges: Change[] = [
-    {
-      itemKey: "A1",
-      itemTitle: "Paper One",
-      field: "author",
-      oldValue: "Smith, John; Doe, Jane",
-      newValue: "Smith, John and Doe, Jane",
-    },
-  ];
-
-  describe("hasUndo", function () {
-    it("returns false when no operation is recorded", function () {
-      assert.isFalse(store.hasUndo());
-    });
-
-    it("returns true after recording", function () {
-      store.record(sampleChanges);
-      assert.isTrue(store.hasUndo());
-    });
-
-    it("returns false after consume", function () {
-      store.record(sampleChanges);
-      store.consume();
-      assert.isFalse(store.hasUndo());
-    });
+  it("hasUndo returns false when no operation is recorded", function () {
+    assert.isFalse(store.hasUndo());
   });
 
-  describe("current", function () {
-    it("returns undefined when empty", function () {
-      assert.isUndefined(store.current());
-    });
-
-    it("returns the recorded operation without clearing", function () {
-      store.record(sampleChanges);
-      const op = store.current();
-      assert.isDefined(op);
-      assert.lengthOf(op!.changes, 1);
-      // still available after peek
-      assert.isTrue(store.hasUndo());
-    });
+  it("record stores changes and hasUndo returns true", function () {
+    const changes: Change[] = [
+      {
+        itemKey: "A1",
+        itemTitle: "Paper",
+        field: "author",
+        oldValue: "old",
+        newValue: "new",
+      },
+    ];
+    store.record(changes);
+    assert.isTrue(store.hasUndo());
   });
 
-  describe("consume", function () {
-    it("returns the operation and clears the store", function () {
-      store.record(sampleChanges);
-      const op = store.consume();
-      assert.isDefined(op);
-      assert.lengthOf(op!.changes, 1);
-      assert.isFalse(store.hasUndo());
-    });
+  it("current returns the recorded operation without clearing", function () {
+    const changes: Change[] = [
+      {
+        itemKey: "A1",
+        itemTitle: "Paper",
+        field: "number",
+        oldValue: "第3期",
+        newValue: "3",
+      },
+    ];
+    store.record(changes);
 
-    it("returns undefined when empty", function () {
-      assert.isUndefined(store.consume());
-    });
+    const op1 = store.current();
+    assert.isDefined(op1);
+    assert.lengthOf(op1!.changes, 1);
+
+    // Still there after current()
+    const op2 = store.current();
+    assert.isDefined(op2);
   });
 
-  describe("record", function () {
-    it("deep-clones changes so mutations do not affect the store", function () {
-      const changes: Change[] = [
-        {
-          itemKey: "A1",
-          itemTitle: "Paper",
-          field: "number",
-          oldValue: "第三期",
-          newValue: "3",
-        },
-      ];
-      store.record(changes);
+  it("consume returns and clears the recorded operation", function () {
+    const changes: Change[] = [
+      {
+        itemKey: "A1",
+        itemTitle: "Paper",
+        field: "number",
+        oldValue: "第3期",
+        newValue: "3",
+      },
+    ];
+    store.record(changes);
 
-      // Mutate the original
-      changes[0].newValue = "MUTATED";
+    const op = store.consume();
+    assert.isDefined(op);
+    assert.lengthOf(op!.changes, 1);
 
-      const stored = store.consume()!;
-      assert.equal(stored.changes[0].newValue, "3");
-    });
+    assert.isFalse(store.hasUndo());
+    assert.isUndefined(store.consume());
+  });
 
-    it("replaces a previous recording", function () {
-      store.record(sampleChanges);
-      const newChanges: Change[] = [
-        {
-          itemKey: "A2",
-          itemTitle: "Paper Two",
-          field: "number",
-          oldValue: "第五期",
-          newValue: "5",
-        },
-      ];
-      store.record(newChanges);
+  it("record deep-clones changes so external mutation does not affect stored data", function () {
+    const changes: Change[] = [
+      {
+        itemKey: "A1",
+        itemTitle: "Paper",
+        field: "number",
+        oldValue: "第3期",
+        newValue: "3",
+      },
+    ];
+    store.record(changes);
 
-      const op = store.consume()!;
-      assert.equal(op.changes[0].itemKey, "A2");
-    });
+    // Mutate original
+    changes[0].newValue = "MUTATED";
+
+    const stored = store.consume();
+    assert.equal(stored!.changes[0].newValue, "3");
+  });
+
+  it("record replaces previous operation", function () {
+    const changes1: Change[] = [
+      {
+        itemKey: "A1",
+        itemTitle: "First",
+        field: "number",
+        oldValue: "1",
+        newValue: "2",
+      },
+    ];
+    const changes2: Change[] = [
+      {
+        itemKey: "A2",
+        itemTitle: "Second",
+        field: "author",
+        oldValue: "old",
+        newValue: "new",
+      },
+    ];
+    store.record(changes1);
+    store.record(changes2);
+
+    const op = store.consume();
+    assert.equal(op!.changes[0].itemKey, "A2");
   });
 });

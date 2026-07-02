@@ -19,10 +19,6 @@ export type Change = {
   newValue: string;
 };
 
-export type LastCleanOperation = {
-  changes: Change[];
-};
-
 /**
  * 计算一组条目的清理变更。
  * @returns 只包含实际会发生变更的字段。
