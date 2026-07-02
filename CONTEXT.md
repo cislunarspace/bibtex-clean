@@ -40,3 +40,7 @@
 ### 撤销（Undo）
 
 恢复最近一次清理操作对目标条目字段的修改。插件在内存中保留最近一次清理的原始字段值，用于撤销。
+
+### 清理会话存储（Clean Session Store）
+
+`CleanSessionStore` 管理最近一次清理操作的撤销状态。提供 `record`（记录并深克隆变更）、`current`（查看）、`consume`（取出并清空）、`hasUndo`（是否可撤销）四个方法。

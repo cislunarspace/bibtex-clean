@@ -19,10 +19,6 @@ export type Change = {
   newValue: string;
 };
 
-export type LastCleanOperation = {
-  changes: Change[];
-};
-
 export type CleaningRule = {
   field: keyof CleanableItem;
   apply: (value: string) => string | undefined;
