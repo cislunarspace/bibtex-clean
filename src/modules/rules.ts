@@ -17,7 +17,10 @@ export const RULES: CleaningRule[] = [
       if (!value.includes(";")) {
         return undefined;
       }
-      return value.replace(/\s*;\s*/g, " and ");
+      return value
+        .split(/\s*;\s*/)
+        .filter((s) => s.trim() !== "")
+        .join(" and ");
     },
   },
   {

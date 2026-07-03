@@ -288,6 +288,22 @@ describe("zoteroWriter", function () {
         { creatorType: "author", name: "ACME Corporation" },
       ]);
     });
+
+    it("filters out empty segments caused by consecutive separators", function () {
+      const authors = parseAuthors("闻国光 and  and 过仕宁");
+      assert.deepEqual(authors, [
+        { creatorType: "author", name: "闻国光" },
+        { creatorType: "author", name: "过仕宁" },
+      ]);
+    });
+
+    it("filters out leading/trailing whitespace-only segments", function () {
+      const authors = parseAuthors("  Smith, John   and     Doe, Jane  ");
+      assert.deepEqual(authors, [
+        { creatorType: "author", lastName: "Smith", firstName: "John" },
+        { creatorType: "author", lastName: "Doe", firstName: "Jane" },
+      ]);
+    });
   });
 });
 

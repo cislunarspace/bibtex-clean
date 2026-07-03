@@ -33,5 +33,27 @@ describe("rules", function () {
     it("returns undefined when number is already clean", function () {
       assert.isUndefined(applyRule("number", "3"));
     });
+
+    it("collapses consecutive semicolons without creating empty authors", function () {
+      assert.equal(
+        applyRule("author", "闻国光;;过仕宁"),
+        "闻国光 and 过仕宁",
+      );
+    });
+
+    it("handles leading semicolon without creating empty author", function () {
+      assert.equal(applyRule("author", ";闻国光"), "闻国光");
+    });
+
+    it("handles trailing semicolon without creating empty author", function () {
+      assert.equal(applyRule("author", "闻国光;"), "闻国光");
+    });
+
+    it("handles multiple consecutive semicolons", function () {
+      assert.equal(
+        applyRule("author", "A;;;B"),
+        "A and B",
+      );
+    });
   });
 });

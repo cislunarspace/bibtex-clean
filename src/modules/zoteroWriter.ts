@@ -118,8 +118,11 @@ export function formatAuthors(
  */
 export function parseAuthors(value: string): _ZoteroTypes.Item.CreatorJSON[] {
   const separator = value.includes(";") ? ";" : " and ";
-  return value.split(separator).map((part) => {
-    const trimmed = part.trim();
+  return value
+    .split(separator)
+    .map((part) => part.trim())
+    .filter((trimmed) => trimmed !== "")
+    .map((trimmed) => {
     const commaIndex = trimmed.indexOf(",");
     if (commaIndex > 0) {
       return {
