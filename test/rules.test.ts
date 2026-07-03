@@ -35,10 +35,7 @@ describe("rules", function () {
     });
 
     it("collapses consecutive semicolons without creating empty authors", function () {
-      assert.equal(
-        applyRule("author", "闻国光;;过仕宁"),
-        "闻国光 and 过仕宁",
-      );
+      assert.equal(applyRule("author", "闻国光;;过仕宁"), "闻国光 and 过仕宁");
     });
 
     it("handles leading semicolon without creating empty author", function () {
@@ -50,10 +47,7 @@ describe("rules", function () {
     });
 
     it("handles multiple consecutive semicolons", function () {
-      assert.equal(
-        applyRule("author", "A;;;B"),
-        "A and B",
-      );
+      assert.equal(applyRule("author", "A;;;B"), "A and B");
     });
   });
 });

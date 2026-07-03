@@ -69,10 +69,12 @@ async function applyChangeValues(
         succeeded.push(...result.value);
       } else {
         // 整个条目分组失败时，该组内所有变更都标记为失败
-        failed.push(...result.reason.changes.map((change: FieldChange) => ({
-          change,
-          error: result.reason.error,
-        })));
+        failed.push(
+          ...result.reason.changes.map((change: FieldChange) => ({
+            change,
+            error: result.reason.error,
+          })),
+        );
       }
     }
   }
@@ -181,17 +183,17 @@ export function parseAuthors(value: string): _ZoteroTypes.Item.CreatorJSON[] {
     .map((part) => part.trim())
     .filter((trimmed) => trimmed !== "")
     .map((trimmed) => {
-    const commaIndex = trimmed.indexOf(",");
-    if (commaIndex > 0) {
+      const commaIndex = trimmed.indexOf(",");
+      if (commaIndex > 0) {
+        return {
+          creatorType: "author",
+          lastName: trimmed.slice(0, commaIndex).trim(),
+          firstName: trimmed.slice(commaIndex + 1).trim(),
+        };
+      }
       return {
         creatorType: "author",
-        lastName: trimmed.slice(0, commaIndex).trim(),
-        firstName: trimmed.slice(commaIndex + 1).trim(),
+        name: trimmed,
       };
-    }
-    return {
-      creatorType: "author",
-      name: trimmed,
-    };
-  });
+    });
 }

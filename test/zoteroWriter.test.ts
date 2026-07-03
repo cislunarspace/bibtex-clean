@@ -167,9 +167,27 @@ describe("zoteroWriter", function () {
       };
 
       const changes: FieldChange[] = [
-        { libraryID: 1, itemKey: "A1", field: "number", oldValue: "第一期", newValue: "1" },
-        { libraryID: 1, itemKey: "A2", field: "number", oldValue: "第二期", newValue: "2" },
-        { libraryID: 1, itemKey: "A3", field: "number", oldValue: "第三期", newValue: "3" },
+        {
+          libraryID: 1,
+          itemKey: "A1",
+          field: "number",
+          oldValue: "第一期",
+          newValue: "1",
+        },
+        {
+          libraryID: 1,
+          itemKey: "A2",
+          field: "number",
+          oldValue: "第二期",
+          newValue: "2",
+        },
+        {
+          libraryID: 1,
+          itemKey: "A3",
+          field: "number",
+          oldValue: "第三期",
+          newValue: "3",
+        },
       ];
 
       const { succeeded, failed } = await applyChanges(changes);
