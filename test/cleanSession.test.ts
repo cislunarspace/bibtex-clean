@@ -10,7 +10,7 @@ import { CleanSessionStore } from "../src/modules/cleanSessionStore";
  *
  * `cleanSelectedItems` is the function that the right-click "clean" menu
  * item calls. It runs:
- *   1) ZoteroPane.getSelectedItems() -> toCleanableItem
+ *   1) Zotero.getActiveZoteroPane().getSelectedItems() -> toCleanableItem
  *   2) computeChanges (pure, already tested)
  *   3) openCleaningConfirmationDialog (ztoolkit.Dialog)
  *   4) applyChanges (Zotero.Items.getAsync + saveTx)
@@ -123,7 +123,7 @@ class MockProgressWindow {
 describe("cleanSession (click chain from right-click menu)", function () {
   let originalZtoolkit: PropertyDescriptor | undefined;
   let originalAddon: PropertyDescriptor | undefined;
-  let originalZoteroPane: PropertyDescriptor | undefined;
+  let originalGetActiveZoteroPane: typeof Zotero.getActiveZoteroPane;
   let originalGetAsync: typeof Zotero.Items.getAsync;
 
   let nextButtonId: "confirm-clean" | "cancel" = "confirm-clean";
@@ -138,10 +138,6 @@ describe("cleanSession (click chain from right-click menu)", function () {
 
     originalZtoolkit = Object.getOwnPropertyDescriptor(globalThis, "ztoolkit");
     originalAddon = Object.getOwnPropertyDescriptor(globalThis, "addon");
-    originalZoteroPane = Object.getOwnPropertyDescriptor(
-      globalThis,
-      "ZoteroPane",
-    );
 
     Object.defineProperty(globalThis, "ztoolkit", {
       value: {
@@ -187,16 +183,16 @@ describe("cleanSession (click chain from right-click menu)", function () {
       configurable: true,
     });
 
-    Object.defineProperty(globalThis, "ZoteroPane", {
-      value: {
+    // ZoteroPane is not a global in newer Zotero (7+ / 9); use the official
+    // Zotero.getActiveZoteroPane() API instead.
+    originalGetActiveZoteroPane = Zotero.getActiveZoteroPane;
+    Zotero.getActiveZoteroPane = () =>
+      ({
         getSelectedItems: () => {
           getSelectedItemsCalls += 1;
-          return globalThis.__mockSelectedItems ?? [];
+          return (globalThis as any).__mockSelectedItems ?? [];
         },
-      },
-      writable: true,
-      configurable: true,
-    });
+      }) as unknown as _ZoteroTypes.ZoteroPane;
 
     originalGetAsync = Zotero.Items.getAsync;
   });
@@ -212,11 +208,7 @@ describe("cleanSession (click chain from right-click menu)", function () {
     } else {
       delete (globalThis as any).addon;
     }
-    if (originalZoteroPane) {
-      Object.defineProperty(globalThis, "ZoteroPane", originalZoteroPane);
-    } else {
-      delete (globalThis as any).ZoteroPane;
-    }
+    Zotero.getActiveZoteroPane = originalGetActiveZoteroPane;
     Zotero.Items.getAsync = originalGetAsync;
     delete (globalThis as any).__mockSelectedItems;
   });
@@ -264,7 +256,7 @@ describe("cleanSession (click chain from right-click menu)", function () {
     assert.equal(
       getSelectedItemsCalls,
       1,
-      "ZoteroPane.getSelectedItems should be called once",
+      "Zotero.getActiveZoteroPane().getSelectedItems should be called once",
     );
     assert.lengthOf(
       createdDialogs,

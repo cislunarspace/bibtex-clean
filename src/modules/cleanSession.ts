@@ -22,7 +22,7 @@ import { getString } from "../utils/locale";
 export async function cleanSelectedItems(
   store: CleanSessionStore,
 ): Promise<void> {
-  const items = ZoteroPane.getSelectedItems();
+  const items = Zotero.getActiveZoteroPane().getSelectedItems();
   const cleanableItems = items
     .map((item) => toCleanableItem(item))
     .filter((item): item is NonNullable<typeof item> => item !== undefined);
