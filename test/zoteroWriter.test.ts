@@ -256,6 +256,14 @@ describe("zoteroWriter", function () {
       assert.equal(authors, "Smith, John; Doe, Jane");
     });
 
+    it("omits comma when firstName is empty", function () {
+      const authors = formatAuthors([
+        { creatorType: "author", firstName: "霙婧", lastName: "钱" },
+        { creatorType: "author", firstName: "", lastName: "乔鹏昊" },
+      ]);
+      assert.equal(authors, "钱, 霙婧; 乔鹏昊");
+    });
+
     it("returns undefined when there are no authors", function () {
       assert.isUndefined(
         formatAuthors([

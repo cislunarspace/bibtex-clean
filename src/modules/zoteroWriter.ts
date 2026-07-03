@@ -98,9 +98,11 @@ export function formatAuthors(
       (creator) =>
         creator.creatorType === "author" || creator.creatorType === "inventor",
     )
-    .map(
-      (creator) => creator.name || `${creator.lastName}, ${creator.firstName}`,
-    );
+    .map((creator) => {
+      if (creator.name) return creator.name;
+      if (creator.firstName) return `${creator.lastName}, ${creator.firstName}`;
+      return creator.lastName;
+    });
   return authors.length > 0 ? authors.join("; ") : undefined;
 }
 
