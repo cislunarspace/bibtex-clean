@@ -30,11 +30,14 @@ export function showErrorDetails(
   const progressWindow = new ztoolkit.ProgressWindow(
     addon.data.config.addonName,
   );
+  // Use "fail" instead of "error": ProgressWindowHelper only recognises
+  // "success" / "fail" (plus icons registered via setIconURI). An unknown type
+  // falls back to an empty icon and triggers a Zotero XML parsing error window.
   progressWindow.createLine({
     text: getString("message-error-clean-failed", {
       args: { count: String(failed.length) },
     }),
-    type: "error",
+    type: "fail",
   });
   for (const { change, error } of failed) {
     progressWindow.createLine({
