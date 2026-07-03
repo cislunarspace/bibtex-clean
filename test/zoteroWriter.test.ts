@@ -10,7 +10,7 @@ import type { FieldChange } from "../src/modules/changes";
 
 describe("zoteroWriter", function () {
   describe("applyAuthorChange", function () {
-    it("replaces authors in place and preserves non-author creator order", function () {
+    it("replaces all authors and puts them before non-author creators", function () {
       const creators: _ZoteroTypes.Item.CreatorJSON[] = [
         { creatorType: "author", firstName: "John", lastName: "Smith" },
         { creatorType: "editor", firstName: "Jane", lastName: "Doe" },
@@ -20,19 +20,23 @@ describe("zoteroWriter", function () {
       applyAuthorChange(item, "Smith, John and Brown, Bob");
       assert.deepEqual(creators, [
         { creatorType: "author", lastName: "Smith", firstName: "John" },
-        { creatorType: "editor", firstName: "Jane", lastName: "Doe" },
         { creatorType: "author", lastName: "Brown", firstName: "Bob" },
+        { creatorType: "editor", firstName: "Jane", lastName: "Doe" },
       ]);
     });
 
-    it("throws when the new author count does not match", function () {
+    it("splits a combined single-field author into separate creators", function () {
       const creators: _ZoteroTypes.Item.CreatorJSON[] = [
-        { creatorType: "author", firstName: "John", lastName: "Smith" },
+        { creatorType: "author", name: "Zhang San; Li Si; Wang Wu; Zhao Liu" },
       ];
       const item = createMockItem(creators);
-      assert.throws(() => {
-        applyAuthorChange(item, "Smith, John and Doe, Jane");
-      }, /Author count mismatch/);
+      applyAuthorChange(item, "Zhang San and Li Si and Wang Wu and Zhao Liu");
+      assert.deepEqual(creators, [
+        { creatorType: "author", name: "Zhang San" },
+        { creatorType: "author", name: "Li Si" },
+        { creatorType: "author", name: "Wang Wu" },
+        { creatorType: "author", name: "Zhao Liu" },
+      ]);
     });
   });
 

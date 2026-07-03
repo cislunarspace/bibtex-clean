@@ -80,25 +80,10 @@ async function applyChangeValues(
 export function applyAuthorChange(item: Zotero.Item, newValue: string): void {
   const newAuthors = parseAuthors(newValue);
   const creators = item.getCreatorsJSON();
-  const originalAuthorCount = creators.filter(
-    (creator) => creator.creatorType === "author",
-  ).length;
-  if (newAuthors.length !== originalAuthorCount) {
-    throw new Error(
-      `Author count mismatch: expected ${originalAuthorCount}, got ${newAuthors.length}`,
-    );
-  }
-  const result: _ZoteroTypes.Item.CreatorJSON[] = [];
-  let authorIndex = 0;
-  for (const creator of creators) {
-    if (creator.creatorType === "author") {
-      result.push(newAuthors[authorIndex]);
-      authorIndex++;
-    } else {
-      result.push(creator);
-    }
-  }
-  item.setCreators(result);
+  const nonAuthors = creators.filter(
+    (creator) => creator.creatorType !== "author",
+  );
+  item.setCreators([...newAuthors, ...nonAuthors]);
 }
 
 /**
