@@ -42,7 +42,7 @@ export async function cleanSelectedItems(
     changes,
     cleanableItems.length,
   );
-  if (!confirmed) {
+  if (confirmed !== "confirm") {
     return;
   }
 
