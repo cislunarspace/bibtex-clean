@@ -38,6 +38,19 @@ describe("zoteroWriter", function () {
         { creatorType: "author", name: "Zhao Liu" },
       ]);
     });
+
+    it("replaces inventor creators in patent items", function () {
+      const creators: _ZoteroTypes.Item.CreatorJSON[] = [
+        { creatorType: "inventor", firstName: "John", lastName: "Smith" },
+        { creatorType: "inventor", firstName: "Jane", lastName: "Doe" },
+      ];
+      const item = createMockItem(creators);
+      applyAuthorChange(item, "Smith, John and Doe, Jane");
+      assert.deepEqual(creators, [
+        { creatorType: "author", lastName: "Smith", firstName: "John" },
+        { creatorType: "author", lastName: "Doe", firstName: "Jane" },
+      ]);
+    });
   });
 
   describe("applyChanges", function () {
@@ -233,6 +246,14 @@ describe("zoteroWriter", function () {
         { creatorType: "editor", firstName: "Jane", lastName: "Doe" },
       ]);
       assert.equal(authors, "Smith, John");
+    });
+
+    it("includes inventor creators for patents", function () {
+      const authors = formatAuthors([
+        { creatorType: "inventor", firstName: "John", lastName: "Smith" },
+        { creatorType: "inventor", firstName: "Jane", lastName: "Doe" },
+      ]);
+      assert.equal(authors, "Smith, John; Doe, Jane");
     });
 
     it("returns undefined when there are no authors", function () {

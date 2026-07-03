@@ -9,7 +9,7 @@ import type { CleanableItem, FieldChange } from "./changes";
  * 只处理普通文献条目（regular item），忽略笔记、附件等。
  *
  * 注意：Zotero 中作者信息存储在 creators 而非单一字段中，
- * 这里将 creatorType 为 author 的创作者合并为便于清理的字符串。
+ * 这里将 creatorType 为 author 或 inventor 的创作者合并为便于清理的字符串。
  */
 export function toCleanableItem(item: Zotero.Item): CleanableItem | undefined {
   if (!item.isRegularItem()) {
@@ -81,7 +81,8 @@ export function applyAuthorChange(item: Zotero.Item, newValue: string): void {
   const newAuthors = parseAuthors(newValue);
   const creators = item.getCreatorsJSON();
   const nonAuthors = creators.filter(
-    (creator) => creator.creatorType !== "author",
+    (creator) =>
+      creator.creatorType !== "author" && creator.creatorType !== "inventor",
   );
   item.setCreators([...newAuthors, ...nonAuthors]);
 }
@@ -93,7 +94,10 @@ export function formatAuthors(
   creators: _ZoteroTypes.Item.CreatorJSON[],
 ): string | undefined {
   const authors = creators
-    .filter((creator) => creator.creatorType === "author")
+    .filter(
+      (creator) =>
+        creator.creatorType === "author" || creator.creatorType === "inventor",
+    )
     .map(
       (creator) => creator.name || `${creator.lastName}, ${creator.firstName}`,
     );
