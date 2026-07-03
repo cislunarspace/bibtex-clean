@@ -8,6 +8,13 @@ import {
 } from "../src/modules/zoteroWriter";
 import type { FieldChange } from "../src/modules/changes";
 
+// Zotero 运行时 mock，使 applyChanges/undoChanges 测试可在 Node 中运行
+(globalThis as any).Zotero = {
+  Items: {
+    getByLibraryAndKeyAsync: async () => undefined,
+  },
+};
+
 describe("zoteroWriter", function () {
   describe("applyAuthorChange", function () {
     it("replaces all authors and puts them before non-author creators", function () {
@@ -107,6 +114,103 @@ describe("zoteroWriter", function () {
       assert.lengthOf(failed, 1);
       assert.equal(failed[0].change.itemKey, "A2");
       assert.match(failed[0].error.message, /save failed/);
+    });
+
+    it("batches multiple changes on the same item into a single save", async function () {
+      const item = createMockSavableItem({
+        key: "A1",
+        number: "第三期",
+        creators: [
+          { creatorType: "author", firstName: "John", lastName: "Smith" },
+        ],
+      });
+
+      Zotero.Items.getByLibraryAndKeyAsync = async () => item.item;
+
+      const changes: FieldChange[] = [
+        {
+          libraryID: 1,
+          itemKey: "A1",
+          field: "author",
+          oldValue: "Smith, John",
+          newValue: "Smith, John",
+        },
+        {
+          libraryID: 1,
+          itemKey: "A1",
+          field: "number",
+          oldValue: "第三期",
+          newValue: "3",
+        },
+      ];
+
+      const { succeeded } = await applyChanges(changes);
+
+      assert.lengthOf(succeeded, 2);
+      assert.equal(item.getField("number"), "3");
+      assert.equal(item.saveTxCount(), 1);
+    });
+
+    it("processes multiple independent items in parallel", async function () {
+      const item1 = createMockSavableItem({ key: "A1", number: "第一期" });
+      const item2 = createMockSavableItem({ key: "A2", number: "第二期" });
+      const item3 = createMockSavableItem({ key: "A3", number: "第三期" });
+
+      Zotero.Items.getByLibraryAndKeyAsync = async (
+        _libraryID: number,
+        key: string,
+      ) => {
+        if (key === "A1") return item1.item;
+        if (key === "A2") return item2.item;
+        if (key === "A3") return item3.item;
+        throw new Error(`Item ${key} not found`);
+      };
+
+      const changes: FieldChange[] = [
+        { libraryID: 1, itemKey: "A1", field: "number", oldValue: "第一期", newValue: "1" },
+        { libraryID: 1, itemKey: "A2", field: "number", oldValue: "第二期", newValue: "2" },
+        { libraryID: 1, itemKey: "A3", field: "number", oldValue: "第三期", newValue: "3" },
+      ];
+
+      const { succeeded, failed } = await applyChanges(changes);
+
+      assert.lengthOf(succeeded, 3);
+      assert.lengthOf(failed, 0);
+      assert.equal(item1.getField("number"), "1");
+      assert.equal(item2.getField("number"), "2");
+      assert.equal(item3.getField("number"), "3");
+    });
+
+    it("handles more than 20 items across batch boundaries", async function () {
+      const itemCount = 21;
+      const items = Array.from({ length: itemCount }, (_, i) =>
+        createMockSavableItem({ key: `A${i}`, number: `第${i}期` }),
+      );
+
+      Zotero.Items.getByLibraryAndKeyAsync = async (
+        _libraryID: number,
+        key: string,
+      ) => {
+        const idx = parseInt(key.slice(1), 10);
+        if (idx >= 0 && idx < itemCount) return items[idx].item;
+        throw new Error(`Item ${key} not found`);
+      };
+
+      const changes: FieldChange[] = items.map((_, i) => ({
+        libraryID: 1,
+        itemKey: `A${i}`,
+        field: "number",
+        oldValue: `第${i}期`,
+        newValue: `${i}`,
+      }));
+
+      const { succeeded, failed } = await applyChanges(changes);
+
+      assert.lengthOf(succeeded, itemCount);
+      assert.lengthOf(failed, 0);
+      for (let i = 0; i < itemCount; i++) {
+        assert.equal(items[i].getField("number"), `${i}`);
+      }
     });
   });
 
@@ -332,6 +436,7 @@ function createMockSavableItem({
 }) {
   const fields: Record<string, string> = number ? { number } : {};
   const itemCreators = creators ? [...creators] : [];
+  let saveTxCount = 0;
   const item = {
     key,
     getField: (field: string) => fields[field],
@@ -344,6 +449,7 @@ function createMockSavableItem({
       itemCreators.push(...newCreators);
     },
     saveTx: async () => {
+      saveTxCount++;
       if (saveError) {
         throw saveError;
       }
@@ -353,5 +459,6 @@ function createMockSavableItem({
     item,
     getField: (field: string) => fields[field],
     getCreatorsJSON: () => itemCreators,
+    saveTxCount: () => saveTxCount,
   };
 }

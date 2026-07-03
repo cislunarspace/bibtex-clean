@@ -44,6 +44,9 @@ export async function undoChanges(changes: FieldChange[]): Promise<{
   return applyChangeValues(changes, (change) => change.oldValue);
 }
 
+/** 并发写入的批次大小。 */
+const BATCH_SIZE = 20;
+
 async function applyChangeValues(
   changes: FieldChange[],
   valueSelector: (change: FieldChange) => string,
@@ -51,30 +54,85 @@ async function applyChangeValues(
   succeeded: FieldChange[];
   failed: { change: FieldChange; error: Error }[];
 }> {
+  const groups = groupChangesByItem(changes);
+  const batches = chunkArray(groups, BATCH_SIZE);
+
   const succeeded: FieldChange[] = [];
   const failed: { change: FieldChange; error: Error }[] = [];
-  for (const change of changes) {
-    try {
-      const item = await Zotero.Items.getByLibraryAndKeyAsync(
-        change.libraryID,
-        change.itemKey,
-      );
-      if (!item) {
-        throw new Error(`Item ${change.itemKey} not found`);
+
+  for (const batch of batches) {
+    const results = await Promise.allSettled(
+      batch.map((group) => applyGroup(group, valueSelector)),
+    );
+    for (const result of results) {
+      if (result.status === "fulfilled") {
+        succeeded.push(...result.value);
+      } else {
+        // 整个条目分组失败时，该组内所有变更都标记为失败
+        failed.push(...result.reason.changes.map((change: FieldChange) => ({
+          change,
+          error: result.reason.error,
+        })));
       }
+    }
+  }
+
+  return { succeeded, failed };
+}
+
+/** 将变更按 (libraryID, itemKey) 分组。 */
+function groupChangesByItem(changes: FieldChange[]): FieldChange[][] {
+  const map = new Map<string, FieldChange[]>();
+  for (const change of changes) {
+    const key = `${change.libraryID}\x00${change.itemKey}`;
+    const group = map.get(key);
+    if (group) {
+      group.push(change);
+    } else {
+      map.set(key, [change]);
+    }
+  }
+  return [...map.values()];
+}
+
+/** 将数组等分为指定大小的块。 */
+function chunkArray<T>(arr: T[], size: number): T[][] {
+  const result: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    result.push(arr.slice(i, i + size));
+  }
+  return result;
+}
+
+/** 对一个条目的所有变更一次性写入。 */
+async function applyGroup(
+  group: FieldChange[],
+  valueSelector: (change: FieldChange) => string,
+): Promise<FieldChange[]> {
+  try {
+    const first = group[0];
+    const item = await Zotero.Items.getByLibraryAndKeyAsync(
+      first.libraryID,
+      first.itemKey,
+    );
+    if (!item) {
+      throw new Error(`Item ${first.itemKey} not found`);
+    }
+
+    for (const change of group) {
       const value = valueSelector(change);
       if (change.field === "author") {
         applyAuthorChange(item, value);
       } else {
         item.setField(change.field as any, value);
       }
-      await item.saveTx();
-      succeeded.push(change);
-    } catch (error) {
-      failed.push({ change, error: error as Error });
     }
+
+    await item.saveTx();
+    return group;
+  } catch (error) {
+    throw { error: error as Error, changes: group };
   }
-  return { succeeded, failed };
 }
 
 export function applyAuthorChange(item: Zotero.Item, newValue: string): void {
