@@ -6,6 +6,7 @@ import { RULES } from "./rules";
 
 export type CleanableItem = {
   key: string;
+  libraryID: number;
   title: string;
   author?: string;
   number?: string;
@@ -13,6 +14,7 @@ export type CleanableItem = {
 
 export type Change = {
   itemKey: string;
+  itemLibraryID: number;
   itemTitle: string;
   field: string;
   oldValue: string;
@@ -22,6 +24,7 @@ export type Change = {
 /** writer 消费的纯数据载荷，不含展示字段。 */
 export type FieldChange = {
   itemKey: string;
+  libraryID: number;
   field: string;
   oldValue: string;
   newValue: string;
@@ -31,12 +34,15 @@ export type FieldChange = {
  * 将展示变更剥离展示字段，生成 writer 可消费的字段变更列表。
  */
 export function changesToFieldChanges(changes: Change[]): FieldChange[] {
-  return changes.map(({ itemKey, field, oldValue, newValue }) => ({
-    itemKey,
-    field,
-    oldValue,
-    newValue,
-  }));
+  return changes.map(
+    ({ itemKey, itemLibraryID, field, oldValue, newValue }) => ({
+      itemKey,
+      libraryID: itemLibraryID,
+      field,
+      oldValue,
+      newValue,
+    }),
+  );
 }
 
 /**
@@ -55,6 +61,7 @@ export function computeChanges(items: CleanableItem[]): Change[] {
       if (newValue !== undefined && newValue !== value) {
         changes.push({
           itemKey: item.key,
+          itemLibraryID: item.libraryID,
           itemTitle: item.title,
           field: rule.field,
           oldValue: value,

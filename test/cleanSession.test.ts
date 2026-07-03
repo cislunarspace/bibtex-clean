@@ -49,6 +49,7 @@ function createFakeAdapters() {
         }
         return {
           key: item.key,
+          libraryID: 1,
           title: item.title,
           author: item.author,
           number: item.number,
@@ -112,7 +113,7 @@ function createCleanable(
   author?: string,
   number?: string,
 ): CleanableItem {
-  return { key, title, author, number };
+  return { key, libraryID: 1, title, author, number };
 }
 
 function asZoteroItems(items: CleanableItem[]): Zotero.Item[] {
@@ -254,6 +255,7 @@ describe("cleanSession", function () {
       const store = new CleanSessionStore();
       const changes: Change[] = [
         {
+          itemLibraryID: 1,
           itemKey: "A1",
           itemTitle: "Paper One",
           field: "author",
@@ -261,6 +263,7 @@ describe("cleanSession", function () {
           newValue: "Smith, John and Doe, Jane",
         },
         {
+          itemLibraryID: 1,
           itemKey: "A2",
           itemTitle: "Paper Two",
           field: "author",
@@ -308,6 +311,7 @@ describe("cleanSession", function () {
       const store = new CleanSessionStore();
       const changes: Change[] = [
         {
+          itemLibraryID: 1,
           itemKey: "A1",
           itemTitle: "Paper One",
           field: "author",
@@ -487,6 +491,7 @@ describe("cleanSession", function () {
       const fakes = createFakeAdapters();
       const changes: Change[] = [
         {
+          itemLibraryID: 1,
           itemKey: "A3",
           itemTitle: "Paper Three",
           field: "author",

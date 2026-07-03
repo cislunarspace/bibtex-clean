@@ -16,6 +16,7 @@ describe("CleanSessionStore", function () {
   it("record stores changes and hasUndo returns true", function () {
     const changes: Change[] = [
       {
+        itemLibraryID: 1,
         itemKey: "A1",
         itemTitle: "Paper",
         field: "author",
@@ -30,6 +31,7 @@ describe("CleanSessionStore", function () {
   it("current returns the recorded operation without clearing", function () {
     const changes: Change[] = [
       {
+        itemLibraryID: 1,
         itemKey: "A1",
         itemTitle: "Paper",
         field: "number",
@@ -51,6 +53,7 @@ describe("CleanSessionStore", function () {
   it("consume returns and clears the recorded operation", function () {
     const changes: Change[] = [
       {
+        itemLibraryID: 1,
         itemKey: "A1",
         itemTitle: "Paper",
         field: "number",
@@ -71,6 +74,7 @@ describe("CleanSessionStore", function () {
   it("record deep-clones changes so external mutation does not affect stored data", function () {
     const changes: Change[] = [
       {
+        itemLibraryID: 1,
         itemKey: "A1",
         itemTitle: "Paper",
         field: "number",
@@ -90,6 +94,7 @@ describe("CleanSessionStore", function () {
   it("record replaces previous operation", function () {
     const changes1: Change[] = [
       {
+        itemLibraryID: 1,
         itemKey: "A1",
         itemTitle: "First",
         field: "number",
@@ -99,6 +104,7 @@ describe("CleanSessionStore", function () {
     ];
     const changes2: Change[] = [
       {
+        itemLibraryID: 1,
         itemKey: "A2",
         itemTitle: "Second",
         field: "author",

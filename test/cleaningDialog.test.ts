@@ -21,6 +21,7 @@ function mockGetString(
 
 const changes: Change[] = [
   {
+    itemLibraryID: 1,
     itemKey: "A1",
     itemTitle: "Paper One",
     field: "author",
@@ -65,6 +66,7 @@ describe("cleaningDialog", function () {
     it("computes unchanged count correctly for multiple items", function () {
       const multiChanges: Change[] = [
         {
+          itemLibraryID: 1,
           itemKey: "A1",
           itemTitle: "Paper One",
           field: "author",
@@ -72,6 +74,7 @@ describe("cleaningDialog", function () {
           newValue: "new",
         },
         {
+          itemLibraryID: 1,
           itemKey: "A1",
           itemTitle: "Paper One",
           field: "number",
@@ -79,6 +82,7 @@ describe("cleaningDialog", function () {
           newValue: "new",
         },
         {
+          itemLibraryID: 1,
           itemKey: "A2",
           itemTitle: "Paper Two",
           field: "author",
@@ -111,6 +115,7 @@ describe("cleaningDialog", function () {
     it("snapshot: matches expected structure", function () {
       const multiChanges: Change[] = [
         {
+          itemLibraryID: 1,
           itemKey: "A1",
           itemTitle: "Paper One",
           field: "author",
@@ -118,6 +123,7 @@ describe("cleaningDialog", function () {
           newValue: "Smith, John and Doe, Jane",
         },
         {
+          itemLibraryID: 1,
           itemKey: "A2",
           itemTitle: "论文二",
           field: "number",

@@ -17,6 +17,7 @@ export function toCleanableItem(item: Zotero.Item): CleanableItem | undefined {
   }
   return {
     key: item.key,
+    libraryID: item.libraryID,
     title: item.getField("title") as string,
     author: formatAuthors(item.getCreatorsJSON()),
     number: (item.getField("number") as string) || undefined,
@@ -54,7 +55,12 @@ async function applyChangeValues(
   const failed: { change: FieldChange; error: Error }[] = [];
   for (const change of changes) {
     try {
-      const item = await Zotero.Items.getAsync(change.itemKey);
+      const item = await (
+        Zotero.Items.getAsync as unknown as (
+          libraryID: number,
+          key: string,
+        ) => Promise<Zotero.Item>
+      )(change.libraryID, change.itemKey);
       if (!item) {
         throw new Error(`Item ${change.itemKey} not found`);
       }

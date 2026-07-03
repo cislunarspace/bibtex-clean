@@ -55,7 +55,7 @@ describe("zoteroWriter", function () {
         saveError: new Error("save failed"),
       });
 
-      Zotero.Items.getAsync = async (key: string) => {
+      Zotero.Items.getAsync = async (libraryID: number, key: string) => {
         if (key === "A1") return goodItem.item;
         if (key === "A2") return badItem.item;
         throw new Error(`Item ${key} not found`);
@@ -63,12 +63,14 @@ describe("zoteroWriter", function () {
 
       const changes: FieldChange[] = [
         {
+          libraryID: 1,
           itemKey: "A1",
           field: "number",
           oldValue: "第三期",
           newValue: "3",
         },
         {
+          libraryID: 1,
           itemKey: "A2",
           field: "number",
           oldValue: "第五期",
@@ -102,13 +104,14 @@ describe("zoteroWriter", function () {
     it("restores old field values", async function () {
       const item = createMockSavableItem({ key: "A1", number: "3" });
 
-      Zotero.Items.getAsync = async (key: string) => {
+      Zotero.Items.getAsync = async (libraryID: number, key: string) => {
         if (key === "A1") return item.item;
         throw new Error(`Item ${key} not found`);
       };
 
       const changes: FieldChange[] = [
         {
+          libraryID: 1,
           itemKey: "A1",
           field: "number",
           oldValue: "第三期",
@@ -132,13 +135,14 @@ describe("zoteroWriter", function () {
         ],
       });
 
-      Zotero.Items.getAsync = async (key: string) => {
+      Zotero.Items.getAsync = async (libraryID: number, key: string) => {
         if (key === "A1") return item.item;
         throw new Error(`Item ${key} not found`);
       };
 
       const changes: FieldChange[] = [
         {
+          libraryID: 1,
           itemKey: "A1",
           field: "author",
           oldValue: "Smith, John; Doe, Jane",
@@ -164,7 +168,7 @@ describe("zoteroWriter", function () {
         saveError: new Error("save failed"),
       });
 
-      Zotero.Items.getAsync = async (key: string) => {
+      Zotero.Items.getAsync = async (libraryID: number, key: string) => {
         if (key === "A1") return goodItem.item;
         if (key === "A2") return badItem.item;
         throw new Error(`Item ${key} not found`);
@@ -172,12 +176,14 @@ describe("zoteroWriter", function () {
 
       const changes: FieldChange[] = [
         {
+          libraryID: 1,
           itemKey: "A1",
           field: "number",
           oldValue: "第三期",
           newValue: "3",
         },
         {
+          libraryID: 1,
           itemKey: "A2",
           field: "number",
           oldValue: "第五期",

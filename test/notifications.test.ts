@@ -91,6 +91,7 @@ describe("createNotifier", function () {
       {
         change: {
           itemKey: "A1",
+          itemLibraryID: 1,
           itemTitle: "Paper One",
           field: "number",
           oldValue: "第3期",

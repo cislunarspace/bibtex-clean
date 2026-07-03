@@ -5,11 +5,17 @@ describe("changes", function () {
   describe("computeChanges", function () {
     it("returns a single change for one dirty author field", function () {
       const items: CleanableItem[] = [
-        { key: "A1", title: "Paper One", author: "Smith, John; Doe, Jane" },
+        {
+          libraryID: 1,
+          key: "A1",
+          title: "Paper One",
+          author: "Smith, John; Doe, Jane",
+        },
       ];
       const changes = computeChanges(items);
       assert.lengthOf(changes, 1);
       assert.deepEqual(changes[0], {
+        itemLibraryID: 1,
         itemKey: "A1",
         itemTitle: "Paper One",
         field: "author",
@@ -20,8 +26,18 @@ describe("changes", function () {
 
     it("returns only changes for dirty fields across multiple items", function () {
       const items: CleanableItem[] = [
-        { key: "A1", title: "Dirty", author: "Smith, John; Doe, Jane" },
-        { key: "A2", title: "Clean", author: "Smith, John and Doe, Jane" },
+        {
+          libraryID: 1,
+          key: "A1",
+          title: "Dirty",
+          author: "Smith, John; Doe, Jane",
+        },
+        {
+          libraryID: 1,
+          key: "A2",
+          title: "Clean",
+          author: "Smith, John and Doe, Jane",
+        },
       ];
       const changes = computeChanges(items);
       assert.lengthOf(changes, 1);
@@ -30,7 +46,12 @@ describe("changes", function () {
 
     it("returns an empty array when no changes are needed", function () {
       const items: CleanableItem[] = [
-        { key: "A1", title: "Clean", author: "Smith, John and Doe, Jane" },
+        {
+          libraryID: 1,
+          key: "A1",
+          title: "Clean",
+          author: "Smith, John and Doe, Jane",
+        },
       ];
       assert.deepEqual(computeChanges(items), []);
     });
@@ -42,17 +63,24 @@ describe("changes", function () {
     it("returns changes for multiple items and fields", function () {
       const items: CleanableItem[] = [
         {
+          libraryID: 1,
           key: "A1",
           title: "Paper One",
           author: "Smith, John; Doe, Jane",
           number: "第三期",
         },
-        { key: "A2", title: "Paper Two", author: "Smith, John and Doe, Jane" },
-        { key: "A3", title: "Paper Three", number: "No. 3" },
+        {
+          libraryID: 1,
+          key: "A2",
+          title: "Paper Two",
+          author: "Smith, John and Doe, Jane",
+        },
+        { libraryID: 1, key: "A3", title: "Paper Three", number: "No. 3" },
       ];
       const changes = computeChanges(items);
       assert.lengthOf(changes, 2);
       assert.deepEqual(changes[0], {
+        itemLibraryID: 1,
         itemKey: "A1",
         itemTitle: "Paper One",
         field: "author",
@@ -60,6 +88,7 @@ describe("changes", function () {
         newValue: "Smith, John and Doe, Jane",
       });
       assert.deepEqual(changes[1], {
+        itemLibraryID: 1,
         itemKey: "A1",
         itemTitle: "Paper One",
         field: "number",
