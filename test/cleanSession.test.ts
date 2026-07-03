@@ -1,409 +1,515 @@
 import { assert } from "chai";
+import type {
+  Change,
+  CleanableItem,
+  FieldChange,
+} from "../src/modules/changes";
 import {
+  CleanWorkflow,
   cleanSelectedItems,
   undoLastCleanOperation,
+  type CleanWorkflowAdapters,
+  type UndoAdapters,
 } from "../src/modules/cleanSession";
 import { CleanSessionStore } from "../src/modules/cleanSessionStore";
+import type { Locale } from "../src/utils/locale";
 
-/**
- * Click-chain seam for "右键菜单清理条目失效".
- *
- * `cleanSelectedItems` is the function that the right-click "clean" menu
- * item calls. It runs:
- *   1) Zotero.getActiveZoteroPane().getSelectedItems() -> toCleanableItem
- *   2) computeChanges (pure, already tested)
- *   3) openCleaningConfirmationDialog (ztoolkit.Dialog)
- *   4) applyChanges (Zotero.Items.getAsync + saveTx)
- *   5) store.record + notification
- *
- * If any step in this chain breaks (e.g. the refactor in PR #22 dropped a
- * dependency), this suite catches it without needing a live Zotero UI.
- */
+type NotifierCall =
+  | { method: "showInfo"; text: string }
+  | { method: "showSuccess"; text: string }
+  | { method: "showErrorDetails"; failed: { change: Change; error: Error }[] }
+  | { method: "showUndoableSuccess"; text: string; onUndo: () => void };
 
-type MockItem = {
-  key: string;
-  title: string;
-  fields: Record<string, string>;
-  creators: _ZoteroTypes.Item.CreatorJSON[];
-  saveCount: number;
-  isRegularItem: () => boolean;
-  getField: (f: string) => string;
-  setField: (f: string, v: string) => void;
-  getCreatorsJSON: () => _ZoteroTypes.Item.CreatorJSON[];
-  setCreators: (c: _ZoteroTypes.Item.CreatorJSON[]) => void;
-  saveTx: () => Promise<void>;
-};
+function createFakeAdapters() {
+  const dialogCalls: { changes: Change[]; totalItemCount: number }[] = [];
+  const writerCalls: { type: "apply" | "undo"; changes: FieldChange[] }[] = [];
+  const notifierCalls: NotifierCall[] = [];
 
-function createMockItem({
-  key,
-  title = "",
-  fields = {},
-  creators = [],
-  saveShouldThrow = false,
-}: {
-  key: string;
-  title?: string;
-  fields?: Record<string, string>;
-  creators?: _ZoteroTypes.Item.CreatorJSON[];
-  saveShouldThrow?: boolean;
-}): MockItem {
-  const item: MockItem = {
-    key,
-    title,
-    fields: { ...fields },
-    creators: [...creators],
-    saveCount: 0,
-    isRegularItem: () => true,
-    getField: (f: string) => item.fields[f],
-    setField: (f: string, v: string) => {
-      item.fields[f] = v;
+  let dialogResult = true;
+  let applyResult: {
+    succeeded: FieldChange[];
+    failed: { change: FieldChange; error: Error }[];
+  } = { succeeded: [], failed: [] };
+  let undoResult: {
+    succeeded: FieldChange[];
+    failed: { change: FieldChange; error: Error }[];
+  } = { succeeded: [], failed: [] };
+
+  const adapters: CleanWorkflowAdapters = {
+    dialog: {
+      confirm: async (changes, totalItemCount) => {
+        dialogCalls.push({ changes, totalItemCount });
+        return dialogResult;
+      },
     },
-    getCreatorsJSON: () => item.creators,
-    setCreators: (c: _ZoteroTypes.Item.CreatorJSON[]) => {
-      item.creators.length = 0;
-      item.creators.push(...c);
+    writer: {
+      toCleanableItem: (item: any) => {
+        if (item.isRegularItem === false) {
+          return undefined;
+        }
+        return {
+          key: item.key,
+          title: item.title,
+          author: item.author,
+          number: item.number,
+        } as CleanableItem;
+      },
+      applyChanges: async (changes) => {
+        writerCalls.push({ type: "apply", changes });
+        return {
+          succeeded:
+            applyResult.succeeded.length > 0 ? applyResult.succeeded : changes,
+          failed: applyResult.failed,
+        };
+      },
+      undoChanges: async (changes) => {
+        writerCalls.push({ type: "undo", changes });
+        return {
+          succeeded:
+            undoResult.succeeded.length > 0 ? undoResult.succeeded : changes,
+          failed: undoResult.failed,
+        };
+      },
     },
-    saveTx: async () => {
-      item.saveCount += 1;
-      if (saveShouldThrow) {
-        throw new Error("save failed");
-      }
+    notifier: {
+      showInfo: (text: string) =>
+        notifierCalls.push({ method: "showInfo", text }),
+      showSuccess: (text: string) =>
+        notifierCalls.push({ method: "showSuccess", text }),
+      showErrorDetails: (failed: { change: Change; error: Error }[]) =>
+        notifierCalls.push({ method: "showErrorDetails", failed }),
+      showUndoableSuccess: (text: string, onUndo: () => void) =>
+        notifierCalls.push({ method: "showUndoableSuccess", text, onUndo }),
     },
   };
-  return item;
+
+  return {
+    adapters,
+    dialogCalls,
+    writerCalls,
+    notifierCalls,
+    setDialogResult(value: boolean) {
+      dialogResult = value;
+    },
+    setApplyResult(result: {
+      succeeded: FieldChange[];
+      failed: { change: FieldChange; error: Error }[];
+    }) {
+      applyResult = result;
+    },
+    setUndoResult(result: {
+      succeeded: FieldChange[];
+      failed: { change: FieldChange; error: Error }[];
+    }) {
+      undoResult = result;
+    },
+  };
 }
 
-class MockDialog {
-  public dialogData: { [k: string]: any } = {};
-  public window: { closed: boolean } = { closed: false };
-  public opened = false;
-  public buttonId: string | null = null;
-  private buttons: Array<{ id?: string }> = [];
-
-  constructor(_rows: number, _cols: number) {}
-
-  addCell() {
-    return this;
-  }
-
-  addButton(label: string, id?: string) {
-    this.buttons.push({ id });
-    this.buttonId = id ?? null;
-    return this;
-  }
-
-  setDialogData(d: { [k: string]: any }) {
-    this.dialogData = d;
-    return this;
-  }
-
-  open() {
-    this.opened = true;
-    // Synchronously simulate the user clicking the chosen button.
-    const target = this.buttonId ?? "cancel";
-    this.dialogData._lastButtonId = target;
-    this.window.closed = true;
-    return this;
-  }
+function createCleanable(
+  key: string,
+  title: string,
+  author?: string,
+  number?: string,
+): CleanableItem {
+  return { key, title, author, number };
 }
 
-class MockProgressWindow {
-  constructor(_addonName: string, _opts?: any) {}
-  createLine() {
-    return {
-      addDescription: () => this,
-      show: () => this,
-    };
-  }
-  show() {
-    return this;
-  }
+function asZoteroItems(items: CleanableItem[]): Zotero.Item[] {
+  return items as unknown as Zotero.Item[];
 }
 
-describe("cleanSession (click chain from right-click menu)", function () {
-  let originalZtoolkit: PropertyDescriptor | undefined;
-  let originalAddon: PropertyDescriptor | undefined;
-  let originalGetActiveZoteroPane: typeof Zotero.getActiveZoteroPane;
-  let originalGetAsync: typeof Zotero.Items.getAsync;
+describe("cleanSession", function () {
+  describe("CleanWorkflow state machine (isolated)", function () {
+    const fakeLocale = { getString: (key: string) => `MOCK[${key}]` };
 
-  let nextButtonId: "confirm-clean" | "cancel" = "confirm-clean";
-  let createdDialogs: MockDialog[];
-  let createdProgressWindows: MockProgressWindow[];
-  let getSelectedItemsCalls: number;
+    it("starts in Idle state", function () {
+      const workflow = CleanWorkflow.fromIdle();
+      assert.equal(workflow.state.kind, "Idle");
+    });
 
-  beforeEach(function () {
-    createdDialogs = [];
-    createdProgressWindows = [];
-    getSelectedItemsCalls = 0;
+    it("Idle -> ItemsSelected when items are selected", function () {
+      const items = asZoteroItems([createCleanable("A1", "Paper One")]);
+      const workflow = CleanWorkflow.fromIdle().selectItems(items);
+      assert.equal(workflow.state.kind, "ItemsSelected");
+    });
 
-    originalZtoolkit = Object.getOwnPropertyDescriptor(globalThis, "ztoolkit");
-    originalAddon = Object.getOwnPropertyDescriptor(globalThis, "addon");
+    it("ItemsSelected -> ChangesComputed when there are cleanable items and changes", function () {
+      const { adapters } = createFakeAdapters();
+      const items = asZoteroItems([
+        createCleanable("A1", "Paper One", "Smith, John; Doe, Jane"),
+      ]);
 
-    Object.defineProperty(globalThis, "ztoolkit", {
-      value: {
-        Dialog: function (rows: number, cols: number) {
-          const d = new MockDialog(rows, cols);
-          // override buttonId so the next open() picks the test's choice
-          const origAddButton = d.addButton.bind(d);
-          d.addButton = (label: string, id?: string) => {
-            origAddButton(label, id);
-            d.buttonId = nextButtonId;
-            return d;
-          };
-          createdDialogs.push(d);
-          return d;
+      const workflow = CleanWorkflow.fromIdle()
+        .selectItems(items)
+        .compute(adapters.writer);
+
+      assert.equal(workflow.state.kind, "ChangesComputed");
+      assert.equal((workflow.state as any).totalItemCount, 1);
+      assert.lengthOf((workflow.state as any).changes, 1);
+    });
+
+    it("ItemsSelected -> NoCleanableItems when nothing can be cleaned", function () {
+      const { adapters } = createFakeAdapters();
+      const workflow = CleanWorkflow.fromIdle()
+        .selectItems([])
+        .compute(adapters.writer);
+
+      assert.equal(workflow.state.kind, "NoCleanableItems");
+    });
+
+    it("ItemsSelected -> NoChanges when cleanable items produce no changes", function () {
+      const { adapters } = createFakeAdapters();
+      const items = asZoteroItems([
+        createCleanable("A1", "Paper One", "Smith, John and Doe, Jane"),
+      ]);
+
+      const workflow = CleanWorkflow.fromIdle()
+        .selectItems(items)
+        .compute(adapters.writer);
+
+      assert.equal(workflow.state.kind, "NoChanges");
+    });
+
+    it("ChangesComputed -> Confirmed when user confirms", async function () {
+      const { adapters, dialogCalls } = createFakeAdapters();
+      const items = asZoteroItems([
+        createCleanable("A1", "Paper One", "Smith, John; Doe, Jane"),
+      ]);
+
+      const confirmed = await CleanWorkflow.fromIdle()
+        .selectItems(items)
+        .compute(adapters.writer)
+        .confirm(adapters.dialog);
+
+      assert.equal(confirmed.state.kind, "Confirmed");
+      assert.lengthOf(dialogCalls, 1);
+    });
+
+    it("ChangesComputed -> Cancelled when user cancels", async function () {
+      const { adapters, setDialogResult } = createFakeAdapters();
+      setDialogResult(false);
+      const items = asZoteroItems([
+        createCleanable("A1", "Paper One", "Smith, John; Doe, Jane"),
+      ]);
+
+      const cancelled = await CleanWorkflow.fromIdle()
+        .selectItems(items)
+        .compute(adapters.writer)
+        .confirm(adapters.dialog);
+
+      assert.equal(cancelled.state.kind, "Cancelled");
+    });
+
+    it("Confirmed -> Applied after writing changes", async function () {
+      const { adapters, writerCalls } = createFakeAdapters();
+      const items = asZoteroItems([
+        createCleanable("A1", "Paper One", "Smith, John; Doe, Jane"),
+      ]);
+
+      const applied = await CleanWorkflow.fromIdle()
+        .selectItems(items)
+        .compute(adapters.writer)
+        .confirm(adapters.dialog)
+        .then((w) => w.apply(adapters.writer));
+
+      assert.equal(applied.state.kind, "Applied");
+      assert.lengthOf(writerCalls, 1);
+      assert.equal(writerCalls[0].type, "apply");
+    });
+
+    it("Applied -> Notified records store and shows undoable success on full success", async function () {
+      const { adapters, notifierCalls } = createFakeAdapters();
+      const store = new CleanSessionStore();
+      const items = asZoteroItems([
+        createCleanable("A1", "Paper One", "Smith, John; Doe, Jane"),
+      ]);
+
+      const confirmed = await CleanWorkflow.fromIdle()
+        .selectItems(items)
+        .compute(adapters.writer)
+        .confirm(adapters.dialog);
+      const applied = await confirmed.apply(adapters.writer);
+      const notified = applied.notify(
+        store,
+        adapters.notifier,
+        {
+          writer: adapters.writer,
+          notifier: adapters.notifier,
         },
-        ProgressWindow: function (name: string, opts?: any) {
-          const pw = new MockProgressWindow(name, opts);
-          createdProgressWindows.push(pw);
-          return pw;
+        fakeLocale,
+      );
+
+      assert.equal(notified.state.kind, "Notified");
+      assert.isTrue((notified.state as any).recorded);
+      assert.isTrue(store.hasUndo());
+      const successCall = notifierCalls.find(
+        (c) => c.method === "showUndoableSuccess",
+      );
+      assert.isDefined(successCall);
+    });
+
+    it("Applied -> Notified shows info on partial failure", function () {
+      const { adapters, notifierCalls } = createFakeAdapters();
+      const store = new CleanSessionStore();
+      const changes: Change[] = [
+        {
+          itemKey: "A1",
+          itemTitle: "Paper One",
+          field: "author",
+          oldValue: "Smith, John; Doe, Jane",
+          newValue: "Smith, John and Doe, Jane",
         },
-        Menu: { register: () => {} },
-      },
-      writable: true,
-      configurable: true,
-    });
-
-    Object.defineProperty(globalThis, "addon", {
-      value: {
-        data: {
-          locale: {
-            current: {
-              formatMessagesSync: (queries: any[]) =>
-                queries.map((q) => ({
-                  value: `MOCK[${q.id}]`,
-                  attributes: null,
-                })),
-            },
-          },
-          config: { addonName: "BibTeX Clean" },
+        {
+          itemKey: "A2",
+          itemTitle: "Paper Two",
+          field: "author",
+          oldValue: "Lee, Stan; Ditko, Steve",
+          newValue: "Lee, Stan and Ditko, Steve",
         },
-      },
-      writable: true,
-      configurable: true,
-    });
+      ];
 
-    // ZoteroPane is not a global in newer Zotero (7+ / 9); use the official
-    // Zotero.getActiveZoteroPane() API instead.
-    originalGetActiveZoteroPane = Zotero.getActiveZoteroPane;
-    Zotero.getActiveZoteroPane = () =>
-      ({
-        getSelectedItems: () => {
-          getSelectedItemsCalls += 1;
-          return (globalThis as any).__mockSelectedItems ?? [];
+      const workflow = new (CleanWorkflow as any)({
+        kind: "Applied",
+        cleanableItems: [
+          createCleanable("A1", "Paper One", "Smith, John; Doe, Jane"),
+          createCleanable("A2", "Paper Two", "Lee, Stan; Ditko, Steve"),
+        ],
+        changes,
+        totalItemCount: 2,
+        result: {
+          succeeded: [changes[0]],
+          failed: [{ change: changes[1], error: new Error("save failed") }],
         },
-      }) as unknown as _ZoteroTypes.ZoteroPane;
+      });
 
-    originalGetAsync = Zotero.Items.getAsync;
-  });
+      const notified = workflow.notify(
+        store,
+        adapters.notifier,
+        {
+          writer: adapters.writer,
+          notifier: adapters.notifier,
+        },
+        fakeLocale,
+      );
 
-  afterEach(function () {
-    if (originalZtoolkit) {
-      Object.defineProperty(globalThis, "ztoolkit", originalZtoolkit);
-    } else {
-      delete (globalThis as any).ztoolkit;
-    }
-    if (originalAddon) {
-      Object.defineProperty(globalThis, "addon", originalAddon);
-    } else {
-      delete (globalThis as any).addon;
-    }
-    Zotero.getActiveZoteroPane = originalGetActiveZoteroPane;
-    Zotero.Items.getAsync = originalGetAsync;
-    delete (globalThis as any).__mockSelectedItems;
-  });
-
-  it("clean click: selected item is loaded, dialog shown, field written, store records", async function () {
-    const item = createMockItem({
-      key: "A1",
-      fields: { title: "Paper One", author: "Smith, John; Doe, Jane" },
-      creators: [
-        { creatorType: "author", firstName: "John", lastName: "Smith" },
-        { creatorType: "author", firstName: "Jane", lastName: "Doe" },
-      ],
+      assert.equal(notified.state.kind, "Notified");
+      assert.isTrue((notified.state as any).recorded);
+      const infoCall = notifierCalls.find((c) => c.method === "showInfo");
+      assert.isDefined(infoCall);
+      const errorCall = notifierCalls.find(
+        (c) => c.method === "showErrorDetails",
+      );
+      assert.isDefined(errorCall);
     });
 
-    (globalThis as any).__mockSelectedItems = [
-      {
-        key: item.key,
-        isRegularItem: item.isRegularItem,
-        getField: (f: string) => (f === "title" ? item.title : item.fields[f]),
-        getCreatorsJSON: item.getCreatorsJSON,
-      },
-    ];
+    it("Applied -> Notified does not record store when all changes fail", function () {
+      const { adapters, notifierCalls } = createFakeAdapters();
+      const store = new CleanSessionStore();
+      const changes: Change[] = [
+        {
+          itemKey: "A1",
+          itemTitle: "Paper One",
+          field: "author",
+          oldValue: "Smith, John; Doe, Jane",
+          newValue: "Smith, John and Doe, Jane",
+        },
+      ];
 
-    Zotero.Items.getAsync = (async (key: string) => {
-      if (key === item.key) {
-        // Return a writer-compatible mock
-        return {
-          key: item.key,
-          isRegularItem: item.isRegularItem,
-          getField: item.getField,
-          setField: item.setField,
-          getCreatorsJSON: item.getCreatorsJSON,
-          setCreators: item.setCreators,
-          saveTx: item.saveTx,
-        } as unknown as Zotero.Item;
-      }
-      throw new Error(`unexpected key ${key}`);
-    }) as typeof Zotero.Items.getAsync;
+      const workflow = new (CleanWorkflow as any)({
+        kind: "Applied",
+        cleanableItems: [
+          createCleanable("A1", "Paper One", "Smith, John; Doe, Jane"),
+        ],
+        changes,
+        totalItemCount: 1,
+        result: {
+          succeeded: [],
+          failed: [{ change: changes[0], error: new Error("save failed") }],
+        },
+      });
 
-    nextButtonId = "confirm-clean";
-    const store = new CleanSessionStore();
+      const notified = workflow.notify(
+        store,
+        adapters.notifier,
+        {
+          writer: adapters.writer,
+          notifier: adapters.notifier,
+        },
+        fakeLocale,
+      );
 
-    await cleanSelectedItems(store);
-
-    assert.equal(
-      getSelectedItemsCalls,
-      1,
-      "Zotero.getActiveZoteroPane().getSelectedItems should be called once",
-    );
-    assert.lengthOf(
-      createdDialogs,
-      1,
-      "confirmation dialog should be opened exactly once",
-    );
-    assert.isTrue(createdDialogs[0].opened, "dialog.open() should be called");
-    assert.equal(
-      createdDialogs[0].dialogData._lastButtonId,
-      "confirm-clean",
-      "user should have clicked the confirm-clean button",
-    );
-    // Author changes are stored as creators, not as the string field.
-    assert.deepEqual(
-      item.getCreatorsJSON(),
-      [
-        { creatorType: "author", lastName: "Smith", firstName: "John" },
-        { creatorType: "author", lastName: "Doe", firstName: "Jane" },
-      ],
-      "authors should be rewritten as creators",
-    );
-    assert.equal(
-      item.saveCount,
-      1,
-      "saveTx should be called once after rewriting",
-    );
-    assert.isTrue(
-      store.hasUndo(),
-      "store should record the successful change for undo",
-    );
-  });
-
-  it("clean click + cancel: dialog opens, no field is written, store stays empty", async function () {
-    const item = createMockItem({
-      key: "A2",
-      fields: { author: "Smith, John; Doe, Jane" },
-      creators: [
-        { creatorType: "author", firstName: "John", lastName: "Smith" },
-        { creatorType: "author", firstName: "Jane", lastName: "Doe" },
-      ],
+      assert.equal(notified.state.kind, "Notified");
+      assert.isFalse((notified.state as any).recorded);
+      assert.isFalse(store.hasUndo());
+      const errorCall = notifierCalls.find(
+        (c) => c.method === "showErrorDetails",
+      );
+      assert.isDefined(errorCall);
     });
 
-    (globalThis as any).__mockSelectedItems = [
-      {
-        key: item.key,
-        isRegularItem: item.isRegularItem,
-        getField: (f: string) => (f === "title" ? item.title : item.fields[f]),
-        getCreatorsJSON: item.getCreatorsJSON,
-      },
-    ];
+    it("throws on invalid state transitions", function () {
+      const { adapters } = createFakeAdapters();
+      const items = asZoteroItems([
+        createCleanable("A1", "Paper One", "Smith, John; Doe, Jane"),
+      ]);
 
-    Zotero.Items.getAsync = (async (key: string) => {
-      if (key === item.key) {
-        return {
-          key: item.key,
-          isRegularItem: item.isRegularItem,
-          getField: item.getField,
-          setField: item.setField,
-          getCreatorsJSON: item.getCreatorsJSON,
-          setCreators: item.setCreators,
-          saveTx: item.saveTx,
-        } as unknown as Zotero.Item;
-      }
-      throw new Error(`unexpected key ${key}`);
-    }) as typeof Zotero.Items.getAsync;
+      const changesComputed = CleanWorkflow.fromIdle()
+        .selectItems(items)
+        .compute(adapters.writer);
+      assert.throws(() => changesComputed.compute(adapters.writer));
+      assert.throws(() =>
+        changesComputed.notify(
+          new CleanSessionStore(),
+          adapters.notifier,
+          adapters,
+          fakeLocale,
+        ),
+      );
 
-    nextButtonId = "cancel";
-    const store = new CleanSessionStore();
+      const itemsSelected = CleanWorkflow.fromIdle().selectItems(items);
+      assert.throws(() =>
+        itemsSelected.notify(
+          new CleanSessionStore(),
+          adapters.notifier,
+          adapters,
+          fakeLocale,
+        ),
+      );
 
-    await cleanSelectedItems(store);
-
-    assert.lengthOf(
-      createdDialogs,
-      1,
-      "dialog should still open even on cancel path",
-    );
-    assert.equal(
-      createdDialogs[0].dialogData._lastButtonId,
-      "cancel",
-      "user should have clicked the cancel button",
-    );
-    assert.equal(item.saveCount, 0, "saveTx must NOT be called on cancel");
-    assert.isFalse(store.hasUndo(), "store must stay empty on cancel");
+      const idle = CleanWorkflow.fromIdle();
+      assert.throws(() => idle.compute(adapters.writer));
+      assert.throws(() => idle.confirm(adapters.dialog));
+    });
   });
 
-  it("clean click with no selection: dialog never opens, no error", async function () {
-    (globalThis as any).__mockSelectedItems = [];
-    const store = new CleanSessionStore();
+  describe("cleanSession (click chain from right-click menu)", function () {
+    let originalGetActiveZoteroPane: typeof Zotero.getActiveZoteroPane;
+    let mockSelectedItems: any[] = [];
 
-    await cleanSelectedItems(store);
+    const fakeLocale = { getString: (key: string) => `MOCK[${key}]` };
 
-    assert.lengthOf(createdDialogs, 0, "no dialog when nothing is selected");
-    assert.isFalse(store.hasUndo());
-  });
-
-  it("undo click after a recorded clean: dialog never opens; old value is restored", async function () {
-    const item = createMockItem({
-      key: "A3",
-      fields: { author: "Smith, John and Doe, Jane" },
-      creators: [
-        { creatorType: "author", firstName: "John", lastName: "Smith" },
-        { creatorType: "author", firstName: "Jane", lastName: "Doe" },
-      ],
+    beforeEach(function () {
+      mockSelectedItems = [];
+      originalGetActiveZoteroPane = Zotero.getActiveZoteroPane;
+      Zotero.getActiveZoteroPane = () =>
+        ({
+          getSelectedItems: () => mockSelectedItems,
+        }) as unknown as _ZoteroTypes.ZoteroPane;
     });
 
-    Zotero.Items.getAsync = (async (key: string) => {
-      if (key === item.key) {
-        return {
-          key: item.key,
-          isRegularItem: item.isRegularItem,
-          getField: item.getField,
-          setField: item.setField,
-          getCreatorsJSON: item.getCreatorsJSON,
-          setCreators: item.setCreators,
-          saveTx: item.saveTx,
-        } as unknown as Zotero.Item;
-      }
-      throw new Error(`unexpected key ${key}`);
-    }) as typeof Zotero.Items.getAsync;
+    afterEach(function () {
+      Zotero.getActiveZoteroPane = originalGetActiveZoteroPane;
+    });
 
-    const store = new CleanSessionStore();
-    store.record([
-      {
-        itemKey: item.key,
-        itemTitle: "Paper Three",
-        field: "author",
-        oldValue: "Smith, John; Doe, Jane",
-        newValue: "Smith, John and Doe, Jane",
-      } as any,
-    ]);
+    it("clean click: selected item is loaded, dialog shown, field written, store records", async function () {
+      const fakes = createFakeAdapters();
+      mockSelectedItems = [
+        {
+          key: "A1",
+          title: "Paper One",
+          author: "Smith, John; Doe, Jane",
+        },
+      ];
+      const store = new CleanSessionStore();
 
-    await undoLastCleanOperation(store);
+      await cleanSelectedItems(store, fakes.adapters, fakeLocale);
 
-    assert.lengthOf(
-      createdDialogs,
-      0,
-      "undo path must NOT open the confirmation dialog",
-    );
-    assert.deepEqual(
-      item.getCreatorsJSON(),
-      [
-        { creatorType: "author", lastName: "Smith", firstName: "John" },
-        { creatorType: "author", lastName: "Doe", firstName: "Jane" },
-      ],
-      "undo must restore the old creators",
-    );
-    assert.equal(item.saveCount, 1, "saveTx should be called once during undo");
-    assert.isFalse(store.hasUndo(), "store must be empty after undo (consume)");
+      assert.lengthOf(fakes.dialogCalls, 1);
+      assert.lengthOf(fakes.writerCalls, 1);
+      assert.equal(fakes.writerCalls[0].type, "apply");
+      assert.lengthOf(fakes.writerCalls[0].changes, 1);
+      assert.isTrue(store.hasUndo());
+      const successCall = fakes.notifierCalls.find(
+        (c) => c.method === "showUndoableSuccess",
+      );
+      assert.isDefined(successCall);
+    });
+
+    it("clean click + cancel: dialog opens, no field is written, store stays empty", async function () {
+      const fakes = createFakeAdapters();
+      fakes.setDialogResult(false);
+      mockSelectedItems = [
+        {
+          key: "A2",
+          title: "Paper Two",
+          author: "Smith, John; Doe, Jane",
+        },
+      ];
+      const store = new CleanSessionStore();
+
+      await cleanSelectedItems(store, fakes.adapters, fakeLocale);
+
+      assert.lengthOf(fakes.dialogCalls, 1);
+      assert.lengthOf(fakes.writerCalls, 0);
+      assert.isFalse(store.hasUndo());
+      assert.lengthOf(
+        fakes.notifierCalls.filter((c) => c.method === "showUndoableSuccess"),
+        0,
+      );
+    });
+
+    it("clean click with no selection: dialog never opens, notifier shows info", async function () {
+      const fakes = createFakeAdapters();
+      mockSelectedItems = [];
+      const store = new CleanSessionStore();
+
+      await cleanSelectedItems(store, fakes.adapters, fakeLocale);
+
+      assert.lengthOf(fakes.dialogCalls, 0);
+      assert.lengthOf(fakes.writerCalls, 0);
+      assert.isFalse(store.hasUndo());
+      const infoCall = fakes.notifierCalls.find((c) => c.method === "showInfo");
+      assert.isDefined(infoCall);
+    });
+
+    it("clean click with no changes: dialog never opens, notifier shows info", async function () {
+      const fakes = createFakeAdapters();
+      mockSelectedItems = [
+        {
+          key: "A3",
+          title: "Paper Three",
+          author: "Smith, John and Doe, Jane",
+        },
+      ];
+      const store = new CleanSessionStore();
+
+      await cleanSelectedItems(store, fakes.adapters, fakeLocale);
+
+      assert.lengthOf(fakes.dialogCalls, 0);
+      assert.lengthOf(fakes.writerCalls, 0);
+      assert.isFalse(store.hasUndo());
+      const infoCall = fakes.notifierCalls.find((c) => c.method === "showInfo");
+      assert.isDefined(infoCall);
+    });
+
+    it("undo click after a recorded clean: writer undoes and store is consumed", async function () {
+      const fakes = createFakeAdapters();
+      const changes: Change[] = [
+        {
+          itemKey: "A3",
+          itemTitle: "Paper Three",
+          field: "author",
+          oldValue: "Smith, John; Doe, Jane",
+          newValue: "Smith, John and Doe, Jane",
+        },
+      ];
+      const store = new CleanSessionStore();
+      store.record(changes);
+
+      await undoLastCleanOperation(store, fakes.adapters, fakeLocale);
+
+      assert.lengthOf(fakes.writerCalls, 1);
+      assert.equal(fakes.writerCalls[0].type, "undo");
+      assert.deepEqual(
+        fakes.writerCalls[0].changes.map((c) => c.itemKey),
+        ["A3"],
+      );
+      assert.isFalse(store.hasUndo());
+      const successCall = fakes.notifierCalls.find(
+        (c) => c.method === "showSuccess",
+      );
+      assert.isDefined(successCall);
+    });
   });
 });

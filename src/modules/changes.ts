@@ -19,6 +19,26 @@ export type Change = {
   newValue: string;
 };
 
+/** writer 消费的纯数据载荷，不含展示字段。 */
+export type FieldChange = {
+  itemKey: string;
+  field: string;
+  oldValue: string;
+  newValue: string;
+};
+
+/**
+ * 将展示变更剥离展示字段，生成 writer 可消费的字段变更列表。
+ */
+export function changesToFieldChanges(changes: Change[]): FieldChange[] {
+  return changes.map(({ itemKey, field, oldValue, newValue }) => ({
+    itemKey,
+    field,
+    oldValue,
+    newValue,
+  }));
+}
+
 /**
  * 计算一组条目的清理变更。
  * @returns 只包含实际会发生变更的字段。

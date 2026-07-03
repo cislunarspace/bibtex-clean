@@ -3,6 +3,28 @@ import { FluentMessageId } from "../../typings/i10n";
 
 export { initLocale, getString };
 
+/** i18n 翻译接口，可注入以消除调用方对全局 addon 的依赖。 */
+export interface Locale {
+  getString(
+    key: string,
+    options?: { branch?: string; args?: Record<string, unknown> },
+  ): string;
+}
+
+/**
+ * 创建真实 Locale 实例，底层使用全局 addon.data.locale.current。
+ */
+export function createLocale(): Locale {
+  return {
+    getString(
+      key: string,
+      options?: { branch?: string; args?: Record<string, unknown> },
+    ): string {
+      return getString(key as FluentMessageId, options);
+    },
+  };
+}
+
 /**
  * Initialize locale data
  */

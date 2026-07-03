@@ -2,12 +2,43 @@ import { CleanSessionStore } from "./modules/cleanSessionStore";
 import {
   cleanSelectedItems,
   undoLastCleanOperation,
+  type DialogAdapter,
+  type WriterAdapter,
 } from "./modules/cleanSession";
+import { openCleaningConfirmationDialog } from "./modules/cleaningDialog";
 import { registerItemMenu } from "./modules/menuRegistration";
-import { initLocale } from "./utils/locale";
+import {
+  applyChanges,
+  toCleanableItem,
+  undoChanges,
+} from "./modules/zoteroWriter";
+import { createLocale, initLocale } from "./utils/locale";
+import { createNotifier } from "./utils/notifications";
 import { createZToolkit } from "./utils/ztoolkit";
 
 const store = new CleanSessionStore();
+
+function createAdapters(locale: ReturnType<typeof createLocale>) {
+  return {
+    dialog: {
+      confirm: async (changes, totalItemCount) => {
+        const result = await openCleaningConfirmationDialog(
+          changes,
+          totalItemCount,
+          undefined,
+          locale.getString,
+        );
+        return result === "confirm";
+      },
+    } satisfies DialogAdapter,
+    writer: {
+      toCleanableItem,
+      applyChanges,
+      undoChanges,
+    } satisfies WriterAdapter,
+    notifier: createNotifier(locale),
+  };
+}
 
 async function onStartup() {
   await Promise.all([
@@ -32,10 +63,14 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
     `${addon.data.config.addonRef}-mainWindow.ftl`,
   );
 
+  const locale = createLocale();
+  const adapters = createAdapters(locale);
+
   registerItemMenu(
     store,
-    () => cleanSelectedItems(store),
-    () => undoLastCleanOperation(store),
+    locale,
+    () => cleanSelectedItems(store, adapters, locale),
+    () => undoLastCleanOperation(store, adapters, locale),
   );
 }
 

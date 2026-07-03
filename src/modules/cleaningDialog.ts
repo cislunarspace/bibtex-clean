@@ -8,6 +8,7 @@
  */
 
 import type { Change } from "./changes";
+import type { Locale } from "../utils/locale";
 import { getString } from "../utils/locale";
 
 // ── 结构化数据类型 ──────────────────────────────────────────────
@@ -29,7 +30,7 @@ export type DialogData = {
 
 type StringGetter = (
   key: string,
-  options?: { args?: Record<string, string> },
+  options?: { args?: Record<string, unknown> },
 ) => string;
 
 /**
@@ -194,14 +195,17 @@ function defaultWaitForClose(
  * @param changes 要展示的变更列表
  * @param totalItemCount 选中的可清理条目总数（含无需清理的条目）
  * @param waitForClose 可注入的关闭等待函数，默认轮询 dialog.window.closed
+ * @param getStringFn 可注入的 i18n 函数，默认使用全局 getString
  * @returns 'confirm' 或 'cancel'
  */
 export async function openCleaningConfirmationDialog(
   changes: Change[],
   totalItemCount: number,
   waitForClose?: (dialog: InstanceType<ZToolkit["Dialog"]>) => Promise<void>,
+  getStringFn?: StringGetter,
 ): Promise<"confirm" | "cancel"> {
-  const data = renderDialog(changes, totalItemCount);
+  const fn = getStringFn ?? (getString as StringGetter);
+  const data = renderDialog(changes, totalItemCount, fn);
   const html = renderDialogHtml(data);
 
   const dialog = new ztoolkit.Dialog(1, 1);
@@ -225,13 +229,13 @@ export async function openCleaningConfirmationDialog(
   );
 
   dialog
-    .addButton(getString("dialog-button-cancel"), "cancel")
-    .addButton(getString("dialog-button-confirm-clean"), "confirm-clean");
+    .addButton(fn("dialog-button-cancel"), "cancel")
+    .addButton(fn("dialog-button-confirm-clean"), "confirm-clean");
 
   const dialogData: { _lastButtonId?: string } = {};
   dialog.setDialogData(dialogData);
 
-  dialog.open(getString("dialog-title-clean-items"), {
+  dialog.open(fn("dialog-title-clean-items"), {
     centerscreen: true,
     resizable: true,
     fitContent: true,

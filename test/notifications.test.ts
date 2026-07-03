@@ -1,23 +1,15 @@
 import { assert } from "chai";
-import {
-  showSuccess,
-  showInfo,
-  showErrorDetails,
-  showUndoableSuccess,
-} from "../src/utils/notifications";
+import { createNotifier } from "../src/utils/notifications";
+import type { NotifierAdapter } from "../src/modules/cleanSession";
 import type { Change } from "../src/modules/changes";
 
 /**
- * Regression tests for notification helpers.
- *
- * `zotero-plugin-toolkit`'s ProgressWindowHelper only recognises a few icon
- * types in its internal `icons` map (`success`, `fail`, and whatever we register
- * via `setIconURI`). Passing an unrecognised type such as `"error"` makes the
- * helper fall back to an empty icon string, which triggers a Zotero bug that
- * shows an XML parsing error window instead of the intended notification.
+ * 验证 createNotifier() 返回 NotifierAdapter，且各方法通过 ProgressWindow
+ * 发出通知。showUndoableSuccess 的撤销回调绑定逻辑属于 ProgressWindow 内部
+ * DOM 操作，此处仅验证回调被传递到 window builder 的 addDescription 调用中。
  */
 
-describe("notifications", function () {
+describe("createNotifier", function () {
   let originalZtoolkit: PropertyDescriptor | undefined;
   let originalAddon: PropertyDescriptor | undefined;
   let createdWindows: MockProgressWindow[];
@@ -64,16 +56,26 @@ describe("notifications", function () {
     }
   });
 
-  it("showSuccess uses a recognised progress type", function () {
-    showSuccess("Done");
+  it("返回的对象满足 NotifierAdapter 接口", function () {
+    const notifier = createNotifier();
+    assert.isFunction(notifier.showSuccess);
+    assert.isFunction(notifier.showInfo);
+    assert.isFunction(notifier.showErrorDetails);
+    assert.isFunction(notifier.showUndoableSuccess);
+  });
+
+  it("showSuccess 使用 recognised progress type", function () {
+    const notifier = createNotifier();
+    notifier.showSuccess("Done");
     assert.lengthOf(createdWindows, 1);
     assert.deepEqual(createdWindows[0].createLineCalls, [
       { text: "Done", type: "success" },
     ]);
   });
 
-  it("showInfo uses a recognised progress type", function () {
-    showInfo("No changes");
+  it("showInfo 使用 recognised progress type", function () {
+    const notifier = createNotifier();
+    notifier.showInfo("No changes");
     assert.lengthOf(createdWindows, 1);
     const call = createdWindows[0].createLineCalls[0];
     assert.isDefined(call);
@@ -83,7 +85,8 @@ describe("notifications", function () {
     );
   });
 
-  it("showErrorDetails uses recognised progress types only", function () {
+  it("showErrorDetails 只使用 recognised progress types", function () {
+    const notifier = createNotifier();
     const failed = [
       {
         change: {
@@ -97,7 +100,7 @@ describe("notifications", function () {
       },
     ];
 
-    showErrorDetails(failed);
+    notifier.showErrorDetails(failed);
 
     assert.lengthOf(createdWindows, 1);
     for (const call of createdWindows[0].createLineCalls) {
@@ -108,15 +111,32 @@ describe("notifications", function () {
     }
   });
 
-  it("showUndoableSuccess uses a recognised progress type", function () {
-    showUndoableSuccess("Cleaned", () => {});
+  it("showUndoableSuccess 使用 recognised progress type 并传递 undo 描述", function () {
+    let undoCalled = false;
+    const onUndo = () => {
+      undoCalled = true;
+    };
+
+    const notifier = createNotifier();
+    notifier.showUndoableSuccess("Cleaned", onUndo);
+
     assert.lengthOf(createdWindows, 1);
-    const call = createdWindows[0].createLineCalls[0];
+    const win = createdWindows[0];
+
+    // 验证窗口配置（closeOnClick / closeTime）
+    assert.deepEqual(win.options, { closeOnClick: false, closeTime: 8000 });
+
+    // 验证 createLine 使用了 recognised type
+    const call = win.createLineCalls[0];
     assert.isDefined(call);
     assert.isTrue(
       isRecognisedProgressType(call.type, call.icon),
       `type=${call.type} icon=${call.icon} should not fall back to empty icon`,
     );
+
+    // 验证 addDescription 被调用，说明 undo 链接已注入
+    assert.isNotEmpty(win.descriptionTexts);
+    assert.match(win.descriptionTexts[0], /message-undo/);
   });
 });
 
@@ -124,8 +144,7 @@ function isRecognisedProgressType(
   type: string | undefined,
   icon: string | undefined,
 ): boolean {
-  // Explicit icon wins; otherwise type must be one of the built-ins
-  // (success/fail) or "default" which we register in createZToolkit.
+  // 显式 icon 优先；否则 type 必须是内置类型（success/fail/default）
   if (icon) return true;
   return type === "success" || type === "fail" || type === "default";
 }
@@ -136,15 +155,20 @@ class MockProgressWindow {
     type?: string;
     icon?: string;
   }> = [];
+  public descriptionTexts: string[] = [];
+  public options: Record<string, unknown>;
 
-  constructor(_name: string, _opts?: any) {}
+  constructor(_name: string, opts?: Record<string, unknown>) {
+    this.options = opts ?? {};
+  }
 
   createLine(options: { text?: string; type?: string; icon?: string }): this {
     this.createLineCalls.push(options);
     return this;
   }
 
-  addDescription(_text: string): this {
+  addDescription(text: string): this {
+    this.descriptionTexts.push(text);
     return this;
   }
 

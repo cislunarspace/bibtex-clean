@@ -3,69 +3,75 @@
  */
 
 import type { Change } from "../modules/changes";
-import { getString } from "./locale";
-import { attachUndoLink } from "./undoLink";
+import type { NotifierAdapter } from "../modules/cleanSession";
+import type { Locale } from "./locale";
 
-export function showSuccess(text: string): void {
-  new ztoolkit.ProgressWindow(addon.data.config.addonName)
-    .createLine({
-      text,
-      type: "success",
-    })
-    .show();
-}
+/**
+ * 创建真实的 NotifierAdapter，底层使用 ztoolkit.ProgressWindow。
+ */
+export function createNotifier(locale: Locale): NotifierAdapter {
+  const addonName = addon.data.config.addonName;
 
-export function showInfo(text: string): void {
-  new ztoolkit.ProgressWindow(addon.data.config.addonName)
-    .createLine({
-      text,
-      type: "default",
-    })
-    .show();
-}
-
-export function showErrorDetails(
-  failed: { change: Change; error: Error }[],
-): void {
-  const progressWindow = new ztoolkit.ProgressWindow(
-    addon.data.config.addonName,
-  );
-  // Use "fail" instead of "error": ProgressWindowHelper only recognises
-  // "success" / "fail" (plus icons registered via setIconURI). An unknown type
-  // falls back to an empty icon and triggers a Zotero XML parsing error window.
-  progressWindow.createLine({
-    text: getString("message-error-clean-failed", {
-      args: { count: String(failed.length) },
-    }),
-    type: "fail",
-  });
-  for (const { change, error } of failed) {
-    progressWindow.createLine({
-      text: `${change.itemTitle}: ${error.message}`,
-      type: "default",
-    });
+  function showSuccess(text: string): void {
+    new ztoolkit.ProgressWindow(addonName)
+      .createLine({ text, type: "success" })
+      .show();
   }
-  progressWindow.show();
-}
 
-export function showUndoableSuccess(text: string, onUndo: () => void): void {
-  const linkId = "bibtex-clean-undo-link";
-  const progressWindow = new ztoolkit.ProgressWindow(
-    addon.data.config.addonName,
-    {
+  function showInfo(text: string): void {
+    new ztoolkit.ProgressWindow(addonName)
+      .createLine({ text, type: "default" })
+      .show();
+  }
+
+  function showErrorDetails(failed: { change: Change; error: Error }[]): void {
+    const progressWindow = new ztoolkit.ProgressWindow(addonName);
+    progressWindow.createLine({
+      text: locale.getString("message-error-clean-failed", {
+        args: { count: String(failed.length) },
+      }),
+      type: "fail",
+    });
+    for (const { change, error } of failed) {
+      progressWindow.createLine({
+        text: `${change.itemTitle}: ${error.message}`,
+        type: "default",
+      });
+    }
+    progressWindow.show();
+  }
+
+  function showUndoableSuccess(text: string, onUndo: () => void): void {
+    const linkId = "bibtex-clean-undo-link";
+    const progressWindow = new ztoolkit.ProgressWindow(addonName, {
       closeOnClick: false,
       closeTime: 8000,
-    },
-  );
-  progressWindow
-    .createLine({
-      text,
-      type: "success",
-    })
-    .addDescription(
-      `<a id="${linkId}" href="#">${getString("message-undo")}</a>`,
-    )
-    .show();
+    });
+    progressWindow
+      .createLine({ text, type: "success" })
+      .addDescription(
+        `<a id="${linkId}" href="#">${locale.getString("message-undo")}</a>`,
+      )
+      .show();
 
-  attachUndoLink(progressWindow, linkId, onUndo);
+    // 内部挂载撤销链接的点击事件，调用方无需知道 ProgressWindow 的内部 DOM 结构。
+    setTimeout(() => {
+      try {
+        // @ts-expect-error — ProgressWindow.win 内部 _window 属性未公开类型
+        const win = progressWindow.win?._window as Window | undefined;
+        if (!win) return;
+        const link = win.document.getElementById(linkId);
+        if (!link) return;
+        link.addEventListener("click", (event: Event) => {
+          event.preventDefault();
+          onUndo();
+          progressWindow.close();
+        });
+      } catch {
+        // 忽略访问内部 DOM 时的错误。
+      }
+    }, 100);
+  }
+
+  return { showInfo, showSuccess, showErrorDetails, showUndoableSuccess };
 }
