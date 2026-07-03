@@ -37,14 +37,14 @@ describe("zoteroWriter", function () {
   });
 
   describe("applyChanges", function () {
-    let originalGetAsync: typeof Zotero.Items.getAsync;
+    let originalGetAsync: typeof Zotero.Items.getByLibraryAndKeyAsync;
 
     beforeEach(function () {
-      originalGetAsync = Zotero.Items.getAsync;
+      originalGetAsync = Zotero.Items.getByLibraryAndKeyAsync;
     });
 
     afterEach(function () {
-      Zotero.Items.getAsync = originalGetAsync;
+      Zotero.Items.getByLibraryAndKeyAsync = originalGetAsync;
     });
 
     it("keeps successful changes when other items fail", async function () {
@@ -55,7 +55,10 @@ describe("zoteroWriter", function () {
         saveError: new Error("save failed"),
       });
 
-      Zotero.Items.getAsync = async (libraryID: number, key: string) => {
+      Zotero.Items.getByLibraryAndKeyAsync = async (
+        libraryID: number,
+        key: string,
+      ) => {
         if (key === "A1") return goodItem.item;
         if (key === "A2") return badItem.item;
         throw new Error(`Item ${key} not found`);
@@ -91,20 +94,23 @@ describe("zoteroWriter", function () {
   });
 
   describe("undoChanges", function () {
-    let originalGetAsync: typeof Zotero.Items.getAsync;
+    let originalGetAsync: typeof Zotero.Items.getByLibraryAndKeyAsync;
 
     beforeEach(function () {
-      originalGetAsync = Zotero.Items.getAsync;
+      originalGetAsync = Zotero.Items.getByLibraryAndKeyAsync;
     });
 
     afterEach(function () {
-      Zotero.Items.getAsync = originalGetAsync;
+      Zotero.Items.getByLibraryAndKeyAsync = originalGetAsync;
     });
 
     it("restores old field values", async function () {
       const item = createMockSavableItem({ key: "A1", number: "3" });
 
-      Zotero.Items.getAsync = async (libraryID: number, key: string) => {
+      Zotero.Items.getByLibraryAndKeyAsync = async (
+        libraryID: number,
+        key: string,
+      ) => {
         if (key === "A1") return item.item;
         throw new Error(`Item ${key} not found`);
       };
@@ -135,7 +141,10 @@ describe("zoteroWriter", function () {
         ],
       });
 
-      Zotero.Items.getAsync = async (libraryID: number, key: string) => {
+      Zotero.Items.getByLibraryAndKeyAsync = async (
+        libraryID: number,
+        key: string,
+      ) => {
         if (key === "A1") return item.item;
         throw new Error(`Item ${key} not found`);
       };
@@ -168,7 +177,10 @@ describe("zoteroWriter", function () {
         saveError: new Error("save failed"),
       });
 
-      Zotero.Items.getAsync = async (libraryID: number, key: string) => {
+      Zotero.Items.getByLibraryAndKeyAsync = async (
+        libraryID: number,
+        key: string,
+      ) => {
         if (key === "A1") return goodItem.item;
         if (key === "A2") return badItem.item;
         throw new Error(`Item ${key} not found`);

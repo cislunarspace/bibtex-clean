@@ -55,12 +55,10 @@ async function applyChangeValues(
   const failed: { change: FieldChange; error: Error }[] = [];
   for (const change of changes) {
     try {
-      const item = await (
-        Zotero.Items.getAsync as unknown as (
-          libraryID: number,
-          key: string,
-        ) => Promise<Zotero.Item>
-      )(change.libraryID, change.itemKey);
+      const item = await Zotero.Items.getByLibraryAndKeyAsync(
+        change.libraryID,
+        change.itemKey,
+      );
       if (!item) {
         throw new Error(`Item ${change.itemKey} not found`);
       }
