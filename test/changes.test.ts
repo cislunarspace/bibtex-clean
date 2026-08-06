@@ -75,7 +75,7 @@ describe("changes", function () {
           title: "Paper Two",
           author: "Smith, John and Doe, Jane",
         },
-        { libraryID: 1, key: "A3", title: "Paper Three", number: "No. 3" },
+        { libraryID: 1, key: "A3", title: "Paper Three", number: "3" },
       ];
       const changes = computeChanges(items);
       assert.lengthOf(changes, 2);
@@ -94,6 +94,27 @@ describe("changes", function () {
         field: "number",
         oldValue: "第三期",
         newValue: "三",
+      });
+    });
+
+    it("returns a change for a dirty volume field", function () {
+      const items: CleanableItem[] = [
+        {
+          libraryID: 1,
+          key: "A1",
+          title: "Paper One",
+          volume: "Vol.12",
+        },
+      ];
+      const changes = computeChanges(items);
+      assert.lengthOf(changes, 1);
+      assert.deepEqual(changes[0], {
+        itemLibraryID: 1,
+        itemKey: "A1",
+        itemTitle: "Paper One",
+        field: "volume",
+        oldValue: "Vol.12",
+        newValue: "12",
       });
     });
   });
