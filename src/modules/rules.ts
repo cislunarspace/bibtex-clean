@@ -24,7 +24,7 @@ export const RULES: CleaningRule[] = [
     },
   },
   {
-    field: "number",
+    field: "issue",
     apply: (value) => {
       const cleaned = value
         .replace(/^No\.\s*/i, "")

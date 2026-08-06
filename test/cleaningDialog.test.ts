@@ -47,7 +47,7 @@ describe("cleaningDialog", function () {
       assert.lengthOf(data.rows, 1);
       assert.deepEqual(data.rows[0], {
         itemTitle: "Paper One",
-        fieldName: "author",
+        fieldName: "field-author",
         oldValue: "Smith, John; Doe, Jane",
         newValue: "Smith, John and Doe, Jane",
       });
@@ -77,7 +77,7 @@ describe("cleaningDialog", function () {
           itemLibraryID: 1,
           itemKey: "A1",
           itemTitle: "Paper One",
-          field: "number",
+          field: "issue",
           oldValue: "old",
           newValue: "new",
         },
@@ -126,7 +126,7 @@ describe("cleaningDialog", function () {
           itemLibraryID: 1,
           itemKey: "A2",
           itemTitle: "论文二",
-          field: "number",
+          field: "issue",
           oldValue: "第3期",
           newValue: "3",
         },
@@ -143,13 +143,13 @@ describe("cleaningDialog", function () {
         rows: [
           {
             itemTitle: "Paper One",
-            fieldName: "author",
+            fieldName: "field-author",
             oldValue: "Smith, John; Doe, Jane",
             newValue: "Smith, John and Doe, Jane",
           },
           {
             itemTitle: "论文二",
-            fieldName: "number",
+            fieldName: "field-issue",
             oldValue: "第3期",
             newValue: "3",
           },
@@ -167,7 +167,7 @@ describe("cleaningDialog", function () {
         rows: [
           {
             itemTitle: "Paper One",
-            fieldName: "author",
+            fieldName: "field-author",
             oldValue: "old",
             newValue: "new",
           },
@@ -231,13 +231,13 @@ describe("cleaningDialog", function () {
         rows: [
           {
             itemTitle: "First",
-            fieldName: "author",
+            fieldName: "field-author",
             oldValue: "a",
             newValue: "b",
           },
           {
             itemTitle: "Second",
-            fieldName: "number",
+            fieldName: "field-issue",
             oldValue: "1",
             newValue: "2",
           },

@@ -72,10 +72,10 @@ describe("zoteroWriter", function () {
     });
 
     it("keeps successful changes when other items fail", async function () {
-      const goodItem = createMockSavableItem({ key: "A1", number: "3" });
+      const goodItem = createMockSavableItem({ key: "A1", issue: "3" });
       const badItem = createMockSavableItem({
         key: "A2",
-        number: "5",
+        issue: "5",
         saveError: new Error("save failed"),
       });
 
@@ -92,14 +92,14 @@ describe("zoteroWriter", function () {
         {
           libraryID: 1,
           itemKey: "A1",
-          field: "number",
+          field: "issue",
           oldValue: "第三期",
           newValue: "3",
         },
         {
           libraryID: 1,
           itemKey: "A2",
-          field: "number",
+          field: "issue",
           oldValue: "第五期",
           newValue: "5",
         },
@@ -109,7 +109,7 @@ describe("zoteroWriter", function () {
 
       assert.lengthOf(succeeded, 1);
       assert.equal(succeeded[0].itemKey, "A1");
-      assert.equal(goodItem.getField("number"), "3");
+      assert.equal(goodItem.getField("issue"), "3");
 
       assert.lengthOf(failed, 1);
       assert.equal(failed[0].change.itemKey, "A2");
@@ -119,7 +119,7 @@ describe("zoteroWriter", function () {
     it("batches multiple changes on the same item into a single save", async function () {
       const item = createMockSavableItem({
         key: "A1",
-        number: "第三期",
+        issue: "第三期",
         creators: [
           { creatorType: "author", firstName: "John", lastName: "Smith" },
         ],
@@ -138,7 +138,7 @@ describe("zoteroWriter", function () {
         {
           libraryID: 1,
           itemKey: "A1",
-          field: "number",
+          field: "issue",
           oldValue: "第三期",
           newValue: "3",
         },
@@ -147,14 +147,14 @@ describe("zoteroWriter", function () {
       const { succeeded } = await applyChanges(changes);
 
       assert.lengthOf(succeeded, 2);
-      assert.equal(item.getField("number"), "3");
+      assert.equal(item.getField("issue"), "3");
       assert.equal(item.saveTxCount(), 1);
     });
 
     it("processes multiple independent items in parallel", async function () {
-      const item1 = createMockSavableItem({ key: "A1", number: "第一期" });
-      const item2 = createMockSavableItem({ key: "A2", number: "第二期" });
-      const item3 = createMockSavableItem({ key: "A3", number: "第三期" });
+      const item1 = createMockSavableItem({ key: "A1", issue: "第一期" });
+      const item2 = createMockSavableItem({ key: "A2", issue: "第二期" });
+      const item3 = createMockSavableItem({ key: "A3", issue: "第三期" });
 
       Zotero.Items.getByLibraryAndKeyAsync = async (
         _libraryID: number,
@@ -170,21 +170,21 @@ describe("zoteroWriter", function () {
         {
           libraryID: 1,
           itemKey: "A1",
-          field: "number",
+          field: "issue",
           oldValue: "第一期",
           newValue: "1",
         },
         {
           libraryID: 1,
           itemKey: "A2",
-          field: "number",
+          field: "issue",
           oldValue: "第二期",
           newValue: "2",
         },
         {
           libraryID: 1,
           itemKey: "A3",
-          field: "number",
+          field: "issue",
           oldValue: "第三期",
           newValue: "3",
         },
@@ -194,15 +194,15 @@ describe("zoteroWriter", function () {
 
       assert.lengthOf(succeeded, 3);
       assert.lengthOf(failed, 0);
-      assert.equal(item1.getField("number"), "1");
-      assert.equal(item2.getField("number"), "2");
-      assert.equal(item3.getField("number"), "3");
+      assert.equal(item1.getField("issue"), "1");
+      assert.equal(item2.getField("issue"), "2");
+      assert.equal(item3.getField("issue"), "3");
     });
 
     it("handles more than 20 items across batch boundaries", async function () {
       const itemCount = 21;
       const items = Array.from({ length: itemCount }, (_, i) =>
-        createMockSavableItem({ key: `A${i}`, number: `第${i}期` }),
+        createMockSavableItem({ key: `A${i}`, issue: `第${i}期` }),
       );
 
       Zotero.Items.getByLibraryAndKeyAsync = async (
@@ -217,7 +217,7 @@ describe("zoteroWriter", function () {
       const changes: FieldChange[] = items.map((_, i) => ({
         libraryID: 1,
         itemKey: `A${i}`,
-        field: "number",
+        field: "issue",
         oldValue: `第${i}期`,
         newValue: `${i}`,
       }));
@@ -227,7 +227,7 @@ describe("zoteroWriter", function () {
       assert.lengthOf(succeeded, itemCount);
       assert.lengthOf(failed, 0);
       for (let i = 0; i < itemCount; i++) {
-        assert.equal(items[i].getField("number"), `${i}`);
+        assert.equal(items[i].getField("issue"), `${i}`);
       }
     });
   });
@@ -244,7 +244,7 @@ describe("zoteroWriter", function () {
     });
 
     it("restores old field values", async function () {
-      const item = createMockSavableItem({ key: "A1", number: "3" });
+      const item = createMockSavableItem({ key: "A1", issue: "3" });
 
       Zotero.Items.getByLibraryAndKeyAsync = async (
         libraryID: number,
@@ -258,7 +258,7 @@ describe("zoteroWriter", function () {
         {
           libraryID: 1,
           itemKey: "A1",
-          field: "number",
+          field: "issue",
           oldValue: "第三期",
           newValue: "3",
         },
@@ -268,7 +268,7 @@ describe("zoteroWriter", function () {
 
       assert.lengthOf(succeeded, 1);
       assert.lengthOf(failed, 0);
-      assert.equal(item.getField("number"), "第三期");
+      assert.equal(item.getField("issue"), "第三期");
     });
 
     it("restores author creators from the old formatted value", async function () {
@@ -309,10 +309,10 @@ describe("zoteroWriter", function () {
     });
 
     it("keeps successful undos when other items fail", async function () {
-      const goodItem = createMockSavableItem({ key: "A1", number: "3" });
+      const goodItem = createMockSavableItem({ key: "A1", issue: "3" });
       const badItem = createMockSavableItem({
         key: "A2",
-        number: "5",
+        issue: "5",
         saveError: new Error("save failed"),
       });
 
@@ -329,14 +329,14 @@ describe("zoteroWriter", function () {
         {
           libraryID: 1,
           itemKey: "A1",
-          field: "number",
+          field: "issue",
           oldValue: "第三期",
           newValue: "3",
         },
         {
           libraryID: 1,
           itemKey: "A2",
-          field: "number",
+          field: "issue",
           oldValue: "第五期",
           newValue: "5",
         },
@@ -346,7 +346,7 @@ describe("zoteroWriter", function () {
 
       assert.lengthOf(succeeded, 1);
       assert.equal(succeeded[0].itemKey, "A1");
-      assert.equal(goodItem.getField("number"), "第三期");
+      assert.equal(goodItem.getField("issue"), "第三期");
 
       assert.lengthOf(failed, 1);
       assert.equal(failed[0].change.itemKey, "A2");
@@ -443,16 +443,16 @@ function createMockItem(
 
 function createMockSavableItem({
   key,
-  number,
+  issue,
   creators,
   saveError,
 }: {
   key: string;
-  number?: string;
+  issue?: string;
   creators?: _ZoteroTypes.Item.CreatorJSON[];
   saveError?: Error;
 }) {
-  const fields: Record<string, string> = number ? { number } : {};
+  const fields: Record<string, string> = issue ? { issue } : {};
   const itemCreators = creators ? [...creators] : [];
   let saveTxCount = 0;
   const item = {
@@ -460,6 +460,7 @@ function createMockSavableItem({
     getField: (field: string) => fields[field],
     setField: (field: string, value: string) => {
       fields[field] = value;
+      return true;
     },
     getCreatorsJSON: () => itemCreators,
     setCreators: (newCreators: _ZoteroTypes.Item.CreatorJSON[]) => {

@@ -67,7 +67,7 @@ describe("changes", function () {
           key: "A1",
           title: "Paper One",
           author: "Smith, John; Doe, Jane",
-          number: "第三期",
+          issue: "第三期",
         },
         {
           libraryID: 1,
@@ -75,7 +75,7 @@ describe("changes", function () {
           title: "Paper Two",
           author: "Smith, John and Doe, Jane",
         },
-        { libraryID: 1, key: "A3", title: "Paper Three", number: "3" },
+        { libraryID: 1, key: "A3", title: "Paper Three", issue: "3" },
       ];
       const changes = computeChanges(items);
       assert.lengthOf(changes, 2);
@@ -91,7 +91,7 @@ describe("changes", function () {
         itemLibraryID: 1,
         itemKey: "A1",
         itemTitle: "Paper One",
-        field: "number",
+        field: "issue",
         oldValue: "第三期",
         newValue: "三",
       });

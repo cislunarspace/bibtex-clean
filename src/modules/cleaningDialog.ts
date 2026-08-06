@@ -62,7 +62,7 @@ export function renderDialog(
     ],
     rows: changes.map((change) => ({
       itemTitle: change.itemTitle,
-      fieldName: change.field,
+      fieldName: getStringFn(`field-${change.field}`),
       oldValue: change.oldValue,
       newValue: change.newValue,
     })),

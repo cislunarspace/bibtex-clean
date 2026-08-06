@@ -13,3 +13,6 @@ message-success-partial = 部分条目已清理
 message-success-undone = 已撤销清理
 message-undo = 撤销
 message-error-clean-failed = { $count } 个条目清理失败
+field-author = 作者
+field-issue = 期号
+field-volume = 卷次
