@@ -10,6 +10,7 @@ export type CleanableItem = {
   title: string;
   author?: string;
   number?: string;
+  volume?: string;
 };
 
 export type Change = {

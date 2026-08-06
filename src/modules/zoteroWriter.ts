@@ -21,6 +21,7 @@ export function toCleanableItem(item: Zotero.Item): CleanableItem | undefined {
     title: item.getField("title") as string,
     author: formatAuthors(item.getCreatorsJSON()),
     number: (item.getField("number") as string) || undefined,
+    volume: (item.getField("volume") as string) || undefined,
   };
 }
 

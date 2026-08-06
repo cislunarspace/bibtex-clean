@@ -34,6 +34,34 @@ describe("rules", function () {
       assert.isUndefined(applyRule("number", "3"));
     });
 
+    it("removes 'No.' prefix from number", function () {
+      assert.equal(applyRule("number", "No.10"), "10");
+    });
+
+    it("removes 'No.' prefix with trailing space from number", function () {
+      assert.equal(applyRule("number", "No. 10"), "10");
+    });
+
+    it("removes 'No.' prefix case-insensitively from number", function () {
+      assert.equal(applyRule("number", "no.10"), "10");
+    });
+
+    it("removes 'Vol.' prefix from volume", function () {
+      assert.equal(applyRule("volume", "Vol.12"), "12");
+    });
+
+    it("removes 'Vol.' prefix with trailing space from volume", function () {
+      assert.equal(applyRule("volume", "Vol. 12"), "12");
+    });
+
+    it("removes 'Vol.' prefix case-insensitively from volume", function () {
+      assert.equal(applyRule("volume", "vol.12"), "12");
+    });
+
+    it("returns undefined when volume is already clean", function () {
+      assert.isUndefined(applyRule("volume", "12"));
+    });
+
     it("collapses consecutive semicolons without creating empty authors", function () {
       assert.equal(applyRule("author", "闻国光;;过仕宁"), "闻国光 and 过仕宁");
     });

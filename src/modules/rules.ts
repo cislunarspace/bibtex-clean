@@ -26,7 +26,20 @@ export const RULES: CleaningRule[] = [
   {
     field: "number",
     apply: (value) => {
-      const cleaned = value.replace(/[第期]/g, "").trim();
+      const cleaned = value
+        .replace(/^No\.\s*/i, "")
+        .replace(/[第期]/g, "")
+        .trim();
+      if (cleaned === value) {
+        return undefined;
+      }
+      return cleaned;
+    },
+  },
+  {
+    field: "volume",
+    apply: (value) => {
+      const cleaned = value.replace(/^Vol\.\s*/i, "").trim();
       if (cleaned === value) {
         return undefined;
       }
