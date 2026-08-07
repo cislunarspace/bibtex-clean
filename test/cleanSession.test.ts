@@ -52,7 +52,7 @@ function createFakeAdapters() {
           libraryID: 1,
           title: item.title,
           author: item.author,
-          number: item.number,
+          issue: item.issue,
         } as CleanableItem;
       },
       applyChanges: async (changes) => {
@@ -111,9 +111,9 @@ function createCleanable(
   key: string,
   title: string,
   author?: string,
-  number?: string,
+  issue?: string,
 ): CleanableItem {
-  return { key, libraryID: 1, title, author, number };
+  return { key, libraryID: 1, title, author, issue };
 }
 
 function asZoteroItems(items: CleanableItem[]): Zotero.Item[] {

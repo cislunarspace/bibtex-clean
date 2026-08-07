@@ -9,7 +9,7 @@ export type CleanableItem = {
   libraryID: number;
   title: string;
   author?: string;
-  number?: string;
+  issue?: string;
   volume?: string;
 };
 

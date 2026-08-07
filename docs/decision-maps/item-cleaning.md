@@ -37,7 +37,7 @@ Type: Grilling
 当前规则固定启用，不提供开关：
 
 1. `author` 字段：将 `;` 替换为 `and`。
-2. `number` 字段：移除 `No.` 前缀与汉字 `第`、`期`。
+2. `issue` 字段：移除 `No.` 前缀与汉字 `第`、`期`。
 3. `volume` 字段：移除 `Vol.` 前缀。
 
 未来规则扩展时再考虑配置面板和开关。
@@ -288,7 +288,7 @@ export type Change = {
 };
 
 export type CleaningRule = {
-  field: "author" | "number";
+  field: "author" | "issue";
   apply: (value: string) => string | undefined;
 };
 

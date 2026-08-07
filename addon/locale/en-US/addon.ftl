@@ -13,3 +13,6 @@ message-success-partial = Some items cleaned
 message-success-undone = Clean undone
 message-undo = Undo
 message-error-clean-failed = Failed to clean { $count } items
+field-author = Author
+field-issue = Issue
+field-volume = Volume

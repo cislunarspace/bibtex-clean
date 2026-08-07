@@ -17,4 +17,7 @@ export type FluentMessageId =
   | 'message-success-cleaned'
   | 'message-success-partial'
   | 'message-success-undone'
-  | 'message-undo';
+  | 'message-undo'
+  | 'field-author'
+  | 'field-issue'
+  | 'field-volume';

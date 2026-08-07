@@ -19,31 +19,31 @@ describe("rules", function () {
     });
 
     it("removes Chinese '第' and '期' from number", function () {
-      assert.equal(applyRule("number", "第3期"), "3");
+      assert.equal(applyRule("issue", "第3期"), "3");
     });
 
     it("removes Chinese '第' and '期' while preserving surrounding content", function () {
-      assert.equal(applyRule("number", "第三期"), "三");
+      assert.equal(applyRule("issue", "第三期"), "三");
     });
 
     it("trims whitespace after removing '第' and '期'", function () {
-      assert.equal(applyRule("number", "第 3 期"), "3");
+      assert.equal(applyRule("issue", "第 3 期"), "3");
     });
 
     it("returns undefined when number is already clean", function () {
-      assert.isUndefined(applyRule("number", "3"));
+      assert.isUndefined(applyRule("issue", "3"));
     });
 
     it("removes 'No.' prefix from number", function () {
-      assert.equal(applyRule("number", "No.10"), "10");
+      assert.equal(applyRule("issue", "No.10"), "10");
     });
 
     it("removes 'No.' prefix with trailing space from number", function () {
-      assert.equal(applyRule("number", "No. 10"), "10");
+      assert.equal(applyRule("issue", "No. 10"), "10");
     });
 
     it("removes 'No.' prefix case-insensitively from number", function () {
-      assert.equal(applyRule("number", "no.10"), "10");
+      assert.equal(applyRule("issue", "no.10"), "10");
     });
 
     it("removes 'Vol.' prefix from volume", function () {

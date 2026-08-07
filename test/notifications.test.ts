@@ -93,7 +93,7 @@ describe("createNotifier", function () {
           itemKey: "A1",
           itemLibraryID: 1,
           itemTitle: "Paper One",
-          field: "number",
+          field: "issue",
           oldValue: "第3期",
           newValue: "3",
         } as Change,

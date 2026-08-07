@@ -20,7 +20,7 @@ export function toCleanableItem(item: Zotero.Item): CleanableItem | undefined {
     libraryID: item.libraryID,
     title: item.getField("title") as string,
     author: formatAuthors(item.getCreatorsJSON()),
-    number: (item.getField("number") as string) || undefined,
+    issue: (item.getField("issue") as string) || undefined,
     volume: (item.getField("volume") as string) || undefined,
   };
 }
@@ -127,7 +127,16 @@ async function applyGroup(
       if (change.field === "author") {
         applyAuthorChange(item, value);
       } else {
-        item.setField(change.field as any, value);
+        // zotero-types 将 setField 声明为 void，运行时实际返回 boolean（false 表示字段对该条目类型无效）
+        const ok = item.setField(
+          change.field as any,
+          value,
+        ) as unknown as boolean;
+        if (!ok) {
+          throw new Error(
+            `无法将字段 ${change.field} 写入条目 ${first.itemKey}（字段对该条目类型无效）`,
+          );
+        }
       }
     }
 
